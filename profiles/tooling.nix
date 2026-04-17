@@ -2,7 +2,7 @@
 
 {
   imports = [
-    # Shell
+    # Shell -- enable first, it's your login shell
     ../modules/fish.nix
     ../modules/cli-tools.nix
 
@@ -17,10 +17,11 @@
     ../modules/gh.nix
 
     # Dev toolchains
-    ../modules/rust.nix
-    ../modules/python.nix
-    ../modules/nodejs.nix
-    ../modules/golang.nix
-    ../modules/dev-tools.nix
+    # TODO: uncomment after base system verified
+    # ../modules/rust.nix
+    # ../modules/python.nix
+    # ../modules/nodejs.nix
+    # ../modules/golang.nix
+    # ../modules/dev-tools.nix
   ];
 }

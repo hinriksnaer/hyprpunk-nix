@@ -5,29 +5,32 @@
     # All terminal/dev tooling
     ./tooling.nix
 
-    # Core tools
+    # Core tools -- enable from the start so opencode works on first boot
     ../modules/opencode.nix
 
     # Desktop environment
-    ../modules/hyprland.nix
-    ../modules/kitty.nix
-    ../modules/rofi.nix
-    ../modules/hyprlock.nix
-    ../modules/waybar.nix
-    ../modules/mako.nix
-    ../modules/thunar.nix
+    # TODO: uncomment after tooling is verified
+    # ../modules/hyprland.nix
+    # ../modules/kitty.nix
+    # ../modules/rofi.nix
+    # ../modules/hyprlock.nix
+    # ../modules/waybar.nix
+    # ../modules/mako.nix
+    # ../modules/thunar.nix
 
-    # Fonts
+    # Fonts -- safe to enable early, unlikely to break
     ../modules/fonts.nix
 
     # Audio & multimedia
-    ../modules/audio.nix
-    ../modules/multimedia.nix
+    # TODO: uncomment after desktop environment works
+    # ../modules/audio.nix
+    # ../modules/multimedia.nix
 
     # Applications
-    ../modules/flatpak.nix
-    ../modules/zen-browser.nix
-    ../modules/discord.nix
-    ../modules/obsidian.nix
+    # TODO: uncomment after audio/multimedia works
+    # ../modules/flatpak.nix
+    # ../modules/zen-browser.nix
+    # ../modules/discord.nix
+    # ../modules/obsidian.nix
   ];
 }
