@@ -1,0 +1,3 @@
+source=kitty.conf
+target=~/.config/kitty/theme.conf
+reload=pkill -SIGUSR1 -f kitty
