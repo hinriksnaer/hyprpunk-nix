@@ -20,7 +20,7 @@
     # Hardware
     ../../modules/nvidia.nix
     ../../modules/networking.nix
-    # ../../modules/bluetooth.nix
+    ../../modules/bluetooth.nix
     # ../../modules/fancontrol.nix
   ];
 

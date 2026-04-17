@@ -5,19 +5,22 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DOTFILES_DIR="$SCRIPT_DIR/dotfiles"
 HYPRPUNK_DATA="$HOME/.local/share/hyprpunk"
 
-echo "==> Deploying dotfiles via stow..."
+echo "==> Deploying dotfiles via stow (--no-folding)..."
 
 # Stow each module's dotfiles into $HOME
+# --no-folding ensures individual file symlinks, not folder symlinks
+# This prevents runtime writes (theme switcher, plugins) from leaking into the repo
 for dir in "$DOTFILES_DIR"/*/; do
     module=$(basename "$dir")
 
     # themes are not stowed into $HOME -- they go to ~/.local/share/hyprpunk/themes/
-    if [ "$module" = "themes" ]; then
+    # rust is not needed on NixOS
+    if [ "$module" = "themes" ] || [ "$module" = "rust" ]; then
         continue
     fi
 
     echo "  stow: $module"
-    stow -d "$DOTFILES_DIR" -t "$HOME" --restow "$module" 2>&1 | grep -v "BUG" || true
+    stow -d "$DOTFILES_DIR" -t "$HOME" --no-folding --restow "$module" 2>&1 | grep -v "BUG" || true
 done
 
 # Deploy themes to ~/.local/share/hyprpunk/themes/
@@ -28,8 +31,12 @@ if [ -L "$HYPRPUNK_DATA/themes" ]; then
 fi
 ln -snf "$DOTFILES_DIR/themes" "$HYPRPUNK_DATA/themes"
 
-# Create current-theme tracking dir
+# Create runtime files (not managed by stow -- written by theme switcher)
+echo "==> Creating runtime config files..."
 mkdir -p "$HOME/.config/hyprpunk/current"
+mkdir -p "$HOME/.config/hypr/wallpapers"
+touch "$HOME/.config/hypr/active-theme.conf"
+touch "$HOME/.config/hypr/active-mode.conf"
 
 # ── One-time plugin installs ──
 
@@ -55,19 +62,19 @@ fi
 # Yazi plugins
 if command -v yazi &>/dev/null; then
     echo "==> Installing yazi plugins..."
-    # yazi plugin manager installs from yazi.toml [plugin] section
     ya pack -i 2>/dev/null || true
 fi
 
-# Set default theme
-if [ -f "$HOME/.local/bin/hyprpunk-theme-set" ] && [ ! -L "$HOME/.config/hyprpunk/current/theme" ]; then
-    echo "==> Setting default theme (ayu-mirage)..."
-    fish -c "hyprpunk-theme-set ayu-mirage" 2>/dev/null || true
+# Set default theme (torrentz-hydra)
+if command -v hyprpunk-theme-set &>/dev/null && [ ! -L "$HOME/.config/hyprpunk/current/theme" ]; then
+    echo "==> Setting default theme (torrentz-hydra)..."
+    export HYPRPUNK_PATH="$HYPRPUNK_DATA"
+    fish -c "hyprpunk-theme-set torrentz-hydra" 2>/dev/null || true
 fi
 
+echo ""
 echo "==> Bootstrap complete!"
 echo ""
-echo "Post-install steps:"
-echo "  1. Run 'gcloud auth login' for GCP authentication"
-echo "  2. Run 'gcloud auth application-default login' for ADC"
-echo "  3. Log out and back in for environment variables to take effect"
+echo "Launch Hyprland:"
+echo "  start-hyprland    (from TTY)"
+echo "  or reboot into SDDM"
