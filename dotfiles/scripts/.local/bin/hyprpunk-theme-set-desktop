@@ -202,31 +202,37 @@ if step "Reloading Hyprland" "hyprctl reload"
 end
 
 # Reload btop if running
-if pgrep -x btop >/dev/null 2>&1
+if pgrep -f btop >/dev/null 2>&1
     if step "Refreshing btop" "pkill -SIGUSR2 btop"
         # Success handled by step function
     end
 end
 
 # Reload kitty config if running
-if pgrep -x kitty >/dev/null 2>&1
+if pgrep -f kitty >/dev/null 2>&1
     if step "Reloading kitty config" "killall -SIGUSR1 kitty"
         # Success handled by step function
     end
 end
 
-# Reload mako notification daemon if running
-if pgrep -x mako >/dev/null 2>&1
-    if step "Reloading mako" "pkill mako; sleep 0.2; setsid mako &>/dev/null &"
-        # Success handled by step function
-    end
+# Restart mako to pick up new theme (reload doesn't re-read symlinked includes)
+if pgrep -f mako >/dev/null 2>&1
+    info "Restarting mako"
+    pkill -f mako
+    sleep 0.3
+    setsid mako >/dev/null 2>&1 &
+    disown
+    success "Restarting mako"
 end
 
-# Reload waybar if running (restart for reliable theme update)
-if pgrep -x waybar >/dev/null 2>&1
-    if step "Reloading waybar" "pkill waybar && sleep 0.1 && waybar &"
-        # Success handled by step function
-    end
+# Restart waybar for reliable theme update
+if pgrep -f waybar >/dev/null 2>&1
+    info "Restarting waybar"
+    pkill -f waybar
+    sleep 0.3
+    setsid waybar >/dev/null 2>&1 &
+    disown
+    success "Restarting waybar"
 end
 
 # Update theme in running podman containers (devcontainers)

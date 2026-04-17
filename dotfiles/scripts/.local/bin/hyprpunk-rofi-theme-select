@@ -1,5 +1,5 @@
 #!/usr/bin/env fish
-# Rofi-based theme selector
+# Interactive theme selector using rofi dmenu
 # Usage: hyprpunk-rofi-theme-select
 
 set script_dir (dirname (status -f))
@@ -10,34 +10,40 @@ if not test -d "$themes_dir"
     exit 1
 end
 
-# Get current theme for highlighting
-set current_theme ($script_dir/hyprpunk-theme-current 2>/dev/null | string lower | string replace -a ' ' '-')
+# Get list of available themes
+set theme_list (hyprpunk-theme-list)
 
-# Build theme list with current marker and find selected row
-set theme_list ""
-set current_row 0
-set row 0
-for theme_dir in (find -L "$themes_dir" -mindepth 1 -maxdepth 1 -type d | sort)
-    set name (basename $theme_dir)
-    set pretty (echo $name | sed 's/-/ /g; s/\b\(.\)/\u\1/g')
-    if test "$name" = "$current_theme"
-        set theme_list "$theme_list● $pretty\n"
-        set current_row $row
+# Get current theme for highlighting
+set current_theme (hyprpunk-theme-current 2>/dev/null | string lower | string replace -a ' ' '-')
+
+# Build display list with current marker and track index
+set display_list
+set current_index -1
+set index 0
+for theme in $theme_list
+    if test "$theme" = "$current_theme"
+        set display_list $display_list "● $theme"
+        set current_index $index
     else
-        set theme_list "$theme_list  $pretty\n"
+        set display_list $display_list "  $theme"
     end
-    set row (math $row + 1)
+    set index (math "$index + 1")
 end
 
 # Show rofi picker, pre-select current theme
-set selected (printf "$theme_list" | string trim | rofi -dmenu -i -p "Theme" -selected-row $current_row -theme-str 'window {width: 400px;} listview {lines: 12;}')
+set rofi_args -dmenu -i -p "Select Theme" -no-custom -theme-str 'window {width: 400px; height: 500px;}'
+if test $current_index -ge 0
+    set rofi_args $rofi_args -selected-row $current_index
+end
+set selected (printf '%s\n' $display_list | rofi $rofi_args)
 
 if test -z "$selected"
     exit 0
 end
 
-# Clean selection (remove current marker, convert to theme name)
+# Clean selection and convert to theme name
 set theme_name (echo $selected | sed 's/^[● ] *//; s/ /-/g' | string lower)
+set pretty_name (echo $theme_name | sed 's/-/ /g; s/\b\(.\)/\u\1/g')
 
-# Apply theme
-$script_dir/hyprpunk-theme-set $theme_name
+# Apply in background
+nohup $script_dir/hyprpunk-theme-set "$theme_name" >/dev/null 2>&1 &

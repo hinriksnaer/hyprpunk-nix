@@ -1,74 +1,71 @@
-#!/usr/bin/env fish
-# Rofi-based wallpaper selector for current theme
-# Usage: hyprpunk-rofi-wallpaper-select
+#!/usr/bin/env bash
+# Wallpaper selector with image previews using rofi grid layout
 
-set script_dir (dirname (status -f))
-set themes_dir "$HOME/.local/share/hyprpunk/themes"
+THEMES_DIR="$HOME/.local/share/hyprpunk/themes"
+CURRENT_THEME=$(hyprpunk-theme-current 2>/dev/null | tr '[:upper:]' '[:lower:]' | tr ' ' '-')
+WALLPAPER_DIR="$THEMES_DIR/$CURRENT_THEME/backgrounds"
+CURRENT_WALLPAPER=$(readlink -f "$HOME/.config/hypr/wallpapers/current" 2>/dev/null)
 
-# Get current theme
-set current_theme ($script_dir/hyprpunk-theme-current 2>/dev/null | string lower | string replace -a ' ' '-')
-
-if test -z "$current_theme"
-    notify-send "Wallpaper Selector" "No theme currently set" -t 3000
+if [[ ! -d "$WALLPAPER_DIR" ]]; then
+    notify-send "Wallpaper Selector" "No wallpapers for theme: $CURRENT_THEME" -t 3000
     exit 1
-end
+fi
 
-set bg_dir "$themes_dir/$current_theme/backgrounds"
+mapfile -t WALLPAPERS < <(find -L "$WALLPAPER_DIR" -type f | grep -iE '\.(jpg|jpeg|png|webp)$' | sort)
 
-if not test -d "$bg_dir"
-    notify-send "Wallpaper Selector" "No wallpapers for theme: $current_theme" -t 3000
-    exit 1
-end
-
-# List wallpaper files
-set wallpapers (find -L "$bg_dir" -type f \( -name "*.jpg" -o -name "*.jpeg" -o -name "*.png" -o -name "*.webp" \) | sort)
-
-if test (count $wallpapers) -eq 0
+if [[ ${#WALLPAPERS[@]} -eq 0 ]]; then
     notify-send "Wallpaper Selector" "No wallpaper images found" -t 3000
     exit 1
-end
+fi
 
-# Get current wallpaper for marking
-set current_wp (readlink -f "$HOME/.config/hypr/wallpapers/current" 2>/dev/null)
-
-# Build list with filenames
-set wp_list ""
-for wp in $wallpapers
-    set name (basename $wp)
-    if test "$wp" = "$current_wp"
-        set wp_list "$wp_list$name  (current)\n"
+MENU_ITEMS=""
+for wp in "${WALLPAPERS[@]}"; do
+    resolved=$(readlink -f "$wp")
+    name=$(basename "$wp" | sed 's/\.[^.]*$//; s/\.[^.]*$//; s/-/ /g; s/_/ /g')
+    if [[ "$resolved" == "$CURRENT_WALLPAPER" ]]; then
+        MENU_ITEMS+="● $name\x00icon\x1f$resolved\n"
     else
-        set wp_list "$wp_list$name\n"
-    end
-end
+        MENU_ITEMS+="  $name\x00icon\x1f$resolved\n"
+    fi
+done
 
-# Show rofi picker
-set selected (printf "$wp_list" | string trim | rofi -dmenu -i -p "Wallpaper" -theme-str 'window {width: 500px;} listview {lines: 8;}')
+SELECTED=$(echo -e "$MENU_ITEMS" | rofi -dmenu \
+    -i \
+    -p "Wallpaper" \
+    -show-icons \
+    -theme-str 'window {width: 80%; height: 70%;}' \
+    -theme-str 'mainbox {padding: 20px;}' \
+    -theme-str 'listview {columns: 4; lines: 2; flow: horizontal; fixed-columns: true; fixed-lines: true; spacing: 20px;}' \
+    -theme-str 'element {orientation: vertical; padding: 10px; spacing: 8px; border-radius: 10px;}' \
+    -theme-str 'element-icon {size: 20%; border-radius: 8px;}' \
+    -theme-str 'element-text {horizontal-align: 0.5;}' \
+    -theme-str 'inputbar {padding: 12px; margin: 0 0 20px 0; border-radius: 8px;}')
 
-if test -z "$selected"
+if [[ -z "$SELECTED" ]]; then
     exit 0
-end
+fi
 
-# Clean selection and find full path
-set selected_name (echo $selected | sed 's/ *(current)//')
-set selected_path "$bg_dir/$selected_name"
+SELECTED_CLEAN=$(echo "$SELECTED" | sed 's/^[● ] *//')
 
-if not test -f "$selected_path"
-    notify-send "Wallpaper Selector" "File not found: $selected_name" -t 3000
-    exit 1
-end
+SELECTED_PATH=""
+for wp in "${WALLPAPERS[@]}"; do
+    name=$(basename "$wp" | sed 's/\.[^.]*$//; s/\.[^.]*$//; s/-/ /g; s/_/ /g')
+    if [[ "$name" == "$SELECTED_CLEAN" ]]; then
+        SELECTED_PATH="$wp"
+        break
+    fi
+done
 
-# Set wallpaper
-mkdir -p "$HOME/.config/hypr/wallpapers"
-ln -sf "$selected_path" "$HOME/.config/hypr/wallpapers/current"
+if [[ -n "$SELECTED_PATH" ]]; then
+    mkdir -p "$HOME/.config/hypr/wallpapers"
+    ln -sf "$SELECTED_PATH" "$HOME/.config/hypr/wallpapers/current"
 
-# Start new swaybg, wait for render, kill old one
-set old_pids (pgrep -x swaybg)
-swaybg -i "$selected_path" -m fill >/dev/null 2>&1 &
-disown
-sleep 0.5
-for pid in $old_pids
-    kill $pid 2>/dev/null
-end
+    OLD_PIDS=$(pgrep -f swaybg)
+    swaybg -i "$SELECTED_PATH" -m fill >/dev/null 2>&1 &
+    sleep 0.5
+    for pid in $OLD_PIDS; do
+        kill "$pid" 2>/dev/null
+    done
 
-notify-send "Wallpaper Changed" "$selected_name" -t 2000
+    notify-send "Wallpaper Changed" "$(basename "$SELECTED_PATH")" -t 2000
+fi
