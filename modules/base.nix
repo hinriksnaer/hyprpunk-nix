@@ -40,6 +40,8 @@
     gawk
     util-linux
     procps
+    git
+    firefox
   ];
 
   # Fish must be enabled at system level for login shell

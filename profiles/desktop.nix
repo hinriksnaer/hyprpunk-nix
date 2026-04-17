@@ -10,13 +10,13 @@
 
     # Desktop environment
     # TODO: uncomment after tooling is verified
-    # ../modules/hyprland.nix
-    # ../modules/kitty.nix
-    # ../modules/rofi.nix
-    # ../modules/hyprlock.nix
-    # ../modules/waybar.nix
-    # ../modules/mako.nix
-    # ../modules/thunar.nix
+    ../modules/hyprland.nix
+    ../modules/kitty.nix
+    ../modules/rofi.nix
+    ../modules/hyprlock.nix
+    ../modules/waybar.nix
+    ../modules/mako.nix
+    ../modules/thunar.nix
 
     # Fonts -- safe to enable early, unlikely to break
     ../modules/fonts.nix

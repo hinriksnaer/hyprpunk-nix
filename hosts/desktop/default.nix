@@ -12,10 +12,11 @@
 
     # Hardware (opt-in per machine)
     # TODO: uncomment these one at a time after verifying base system works
-    # ../../modules/nvidia.nix
+    ../../modules/nvidia.nix
+    ../../modules/steam.nix
     # ../../modules/bluetooth.nix
     ../../modules/networking.nix
-    # ../../modules/fancontrol.nix
+    #../../modules/fancontrol.nix
   ];
 
   networking.hostName = "hyprpunk";

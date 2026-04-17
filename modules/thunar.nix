@@ -2,7 +2,7 @@
 
 {
   environment.systemPackages = with pkgs; [
-    xfce.thunar
+    thunar
   ];
 
   # Enable gvfs for trash, MTP, and remote filesystem support

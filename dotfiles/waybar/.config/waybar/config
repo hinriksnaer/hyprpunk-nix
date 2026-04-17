@@ -44,7 +44,7 @@
     "format": "",
     "on-click": "rofi -show drun",
     "on-click-right": "kitty",
-    "tooltip-format": "Fedpunk Menu\n\nSuper + Space"
+    "tooltip-format": "Hyprpunk Menu\n\nSuper + Space"
   },
   "clock": {
     "format": "{:L%d %A %H:%M}",
@@ -87,7 +87,7 @@
     "format-disabled": "󰂲",
     "format-connected": "",
     "tooltip-format": "Devices connected: {num_connections}",
-    "on-click": "blueberry"
+    "on-click": "blueman-manager"
   },
   "pulseaudio": {
     "format": "{icon}",
@@ -172,21 +172,21 @@
     "interval": 2,
     "format": "{}%",
     "tooltip-format": "GPU Usage",
-    "on-click": "kitty nvtop"
+    "on-click": "kitty btop"
   },
   "custom/gpu-temp": {
     "exec": "nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader,nounits | head -n 1",
     "interval": 2,
     "format": "{}°",
     "tooltip-format": "GPU Temperature",
-    "on-click": "kitty nvtop"
+    "on-click": "kitty btop"
   },
   "custom/gpu-vram": {
     "exec": "nvidia-smi --query-gpu=memory.used,memory.total --format=csv,noheader,nounits | awk -F', ' '{printf \"%.1fG/%.0fG\", $1/1024, $2/1024}'",
     "interval": 2,
     "format": "{}",
     "tooltip-format": "GPU VRAM Usage",
-    "on-click": "kitty nvtop"
+    "on-click": "kitty btop"
   },
 
   // RAM Hardware Group

@@ -1,0 +1,4 @@
+/* Torrentz Hydra theme colors for Waybar */
+/* This file is overwritten by hyprpunk-theme-set at runtime */
+@define-color foreground #ffffff;
+@define-color background transparent;

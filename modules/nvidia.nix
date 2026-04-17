@@ -13,6 +13,9 @@
   # Use NVIDIA as primary GPU
   services.xserver.videoDrivers = [ "nvidia" ];
 
+  # Load NVIDIA kernel modules early at boot so DRM/KMS is ready for Hyprland
+  boot.initrd.kernelModules = [ "nvidia" "nvidia_modeset" "nvidia_uvm" "nvidia_drm" ];
+
   # Hardware acceleration with NVIDIA
   hardware.graphics = {
     enable = true;
@@ -26,6 +29,5 @@
     LIBVA_DRIVER_NAME = "nvidia";
     GBM_BACKEND = "nvidia-drm";
     __GLX_VENDOR_LIBRARY_NAME = "nvidia";
-    WLR_NO_HARDWARE_CURSORS = "1";
   };
 }
