@@ -105,16 +105,21 @@ echo ""
 set applied_count 0
 set skipped_count 0
 
-# Update Hyprland active theme file to source the theme's hyprland.conf
+# Update Hyprland active theme file with only color settings from theme
+# We extract general{} block only to avoid animation/decoration leaks between themes
 if test -f "$theme_path/hyprland.conf"
     set active_theme_conf "$HOME/.config/hypr/active-theme.conf"
+    # Extract variable definitions ($var = ...) and general{} block only
+    set theme_content (cat "$theme_path/hyprland.conf")
     printf '%s\n' \
-        '# Active Hyprland Theme (runtime-generated, gitignored)' \
-        '# This file is managed by hyprpunk-theme-set-desktop' \
-        '# Do not edit manually - use: hyprpunk-theme-set <theme-name>' \
+        '# Active Hyprland Theme (runtime-generated)' \
+        '# Managed by hyprpunk-theme-set-desktop' \
         '' \
-        "source = $theme_path/hyprland.conf" \
         > $active_theme_conf
+    # Copy variable definitions (lines starting with $)
+    grep '^\$' "$theme_path/hyprland.conf" >> $active_theme_conf 2>/dev/null
+    # Extract general{} block
+    sed -n '/^general {/,/^}/p' "$theme_path/hyprland.conf" >> $active_theme_conf 2>/dev/null
     if test $status -eq 0
         success "Applying Hyprland theme"
         set applied_count (math $applied_count + 1)
@@ -212,7 +217,7 @@ end
 
 # Reload mako notification daemon if running
 if pgrep -x mako >/dev/null 2>&1
-    if step "Reloading mako" "killall -SIGUSR2 mako"
+    if step "Reloading mako" "pkill mako; sleep 0.2; setsid mako &>/dev/null &"
         # Success handled by step function
     end
 end

@@ -1,0 +1,43 @@
+#!/usr/bin/env fish
+# Rofi-based theme selector
+# Usage: hyprpunk-rofi-theme-select
+
+set script_dir (dirname (status -f))
+set themes_dir "$HOME/.local/share/hyprpunk/themes"
+
+if not test -d "$themes_dir"
+    notify-send "Theme Selector" "Themes directory not found" -t 3000
+    exit 1
+end
+
+# Get current theme for highlighting
+set current_theme ($script_dir/hyprpunk-theme-current 2>/dev/null | string lower | string replace -a ' ' '-')
+
+# Build theme list with current marker and find selected row
+set theme_list ""
+set current_row 0
+set row 0
+for theme_dir in (find -L "$themes_dir" -mindepth 1 -maxdepth 1 -type d | sort)
+    set name (basename $theme_dir)
+    set pretty (echo $name | sed 's/-/ /g; s/\b\(.\)/\u\1/g')
+    if test "$name" = "$current_theme"
+        set theme_list "$theme_list● $pretty\n"
+        set current_row $row
+    else
+        set theme_list "$theme_list  $pretty\n"
+    end
+    set row (math $row + 1)
+end
+
+# Show rofi picker, pre-select current theme
+set selected (printf "$theme_list" | string trim | rofi -dmenu -i -p "Theme" -selected-row $current_row -theme-str 'window {width: 400px;} listview {lines: 12;}')
+
+if test -z "$selected"
+    exit 0
+end
+
+# Clean selection (remove current marker, convert to theme name)
+set theme_name (echo $selected | sed 's/^[● ] *//; s/ /-/g' | string lower)
+
+# Apply theme
+$script_dir/hyprpunk-theme-set $theme_name

@@ -70,10 +70,14 @@ set new_wallpaper $backgrounds[$next_index]
 mkdir -p (dirname "$current_wallpaper_link")
 ln -sf "$new_wallpaper" "$current_wallpaper_link"
 
-# Relaunch swaybg with new wallpaper (omarchy style)
-pkill -x swaybg 2>/dev/null
+# Start new swaybg, wait for render, kill old one
+set old_pids (pgrep -x swaybg)
 swaybg -i "$current_wallpaper_link" -m fill >/dev/null 2>&1 &
 disown
+sleep 0.5
+for pid in $old_pids
+    kill $pid 2>/dev/null
+end
 
 set wallpaper_name (basename "$new_wallpaper")
 notify-send "Wallpaper Changed" "$wallpaper_name" -t 2000

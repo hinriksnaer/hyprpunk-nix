@@ -1,0 +1,74 @@
+#!/usr/bin/env fish
+# Rofi-based wallpaper selector for current theme
+# Usage: hyprpunk-rofi-wallpaper-select
+
+set script_dir (dirname (status -f))
+set themes_dir "$HOME/.local/share/hyprpunk/themes"
+
+# Get current theme
+set current_theme ($script_dir/hyprpunk-theme-current 2>/dev/null | string lower | string replace -a ' ' '-')
+
+if test -z "$current_theme"
+    notify-send "Wallpaper Selector" "No theme currently set" -t 3000
+    exit 1
+end
+
+set bg_dir "$themes_dir/$current_theme/backgrounds"
+
+if not test -d "$bg_dir"
+    notify-send "Wallpaper Selector" "No wallpapers for theme: $current_theme" -t 3000
+    exit 1
+end
+
+# List wallpaper files
+set wallpapers (find -L "$bg_dir" -type f \( -name "*.jpg" -o -name "*.jpeg" -o -name "*.png" -o -name "*.webp" \) | sort)
+
+if test (count $wallpapers) -eq 0
+    notify-send "Wallpaper Selector" "No wallpaper images found" -t 3000
+    exit 1
+end
+
+# Get current wallpaper for marking
+set current_wp (readlink -f "$HOME/.config/hypr/wallpapers/current" 2>/dev/null)
+
+# Build list with filenames
+set wp_list ""
+for wp in $wallpapers
+    set name (basename $wp)
+    if test "$wp" = "$current_wp"
+        set wp_list "$wp_list$name  (current)\n"
+    else
+        set wp_list "$wp_list$name\n"
+    end
+end
+
+# Show rofi picker
+set selected (printf "$wp_list" | string trim | rofi -dmenu -i -p "Wallpaper" -theme-str 'window {width: 500px;} listview {lines: 8;}')
+
+if test -z "$selected"
+    exit 0
+end
+
+# Clean selection and find full path
+set selected_name (echo $selected | sed 's/ *(current)//')
+set selected_path "$bg_dir/$selected_name"
+
+if not test -f "$selected_path"
+    notify-send "Wallpaper Selector" "File not found: $selected_name" -t 3000
+    exit 1
+end
+
+# Set wallpaper
+mkdir -p "$HOME/.config/hypr/wallpapers"
+ln -sf "$selected_path" "$HOME/.config/hypr/wallpapers/current"
+
+# Start new swaybg, wait for render, kill old one
+set old_pids (pgrep -x swaybg)
+swaybg -i "$selected_path" -m fill >/dev/null 2>&1 &
+disown
+sleep 0.5
+for pid in $old_pids
+    kill $pid 2>/dev/null
+end
+
+notify-send "Wallpaper Changed" "$selected_name" -t 2000

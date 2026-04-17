@@ -21,11 +21,9 @@ sort=-time
 
 # Icons
 max-icon-size=48
-icon-path=/usr/share/icons/Adwaita
 
 # Grouping
 group-by=app-name
 
-# Include theme-specific colors
-# This file is symlinked by hyprpunk-theme-set
+# Theme colors (symlinked by hyprpunk-theme-set)
 include=~/.config/mako/theme.conf

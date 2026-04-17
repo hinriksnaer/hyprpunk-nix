@@ -34,10 +34,6 @@
         gh          = import ./modules/gh.nix;
 
         # Dev toolchains
-        rust        = import ./modules/rust.nix;
-        python      = import ./modules/python.nix;
-        nodejs      = import ./modules/nodejs.nix;
-        golang      = import ./modules/golang.nix;
         dev-tools   = import ./modules/dev-tools.nix;
 
         # Desktop
@@ -62,10 +58,12 @@
         networking  = import ./modules/networking.nix;
         fancontrol  = import ./modules/fancontrol.nix;
 
-        # Profiles (convenience bundles)
-        tooling     = import ./profiles/tooling.nix;
-        desktop     = import ./profiles/desktop.nix;
-        container   = import ./profiles/container.nix;
+        # Components (composable module collections)
+        terminal    = import ./components/terminal.nix;
+        ui          = import ./components/ui.nix;
+        apps        = import ./components/apps.nix;
+        dev         = import ./components/dev.nix;
+        media       = import ./components/media.nix;
       };
 
       # ── Machine configurations ──

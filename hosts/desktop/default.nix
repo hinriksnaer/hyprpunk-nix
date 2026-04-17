@@ -7,16 +7,21 @@
     # Base system
     ../../modules/base.nix
 
-    # Desktop profile (tooling + GUI + opencode)
-    ../../profiles/desktop.nix
+    # Components
+    ../../components/terminal.nix
+    ../../components/ui.nix
+    ../../components/apps.nix
+    ../../components/dev.nix
+    ../../components/media.nix
 
-    # Hardware (opt-in per machine)
-    # TODO: uncomment these one at a time after verifying base system works
+    # Core tools
+    ../../modules/opencode.nix
+
+    # Hardware
     ../../modules/nvidia.nix
-    ../../modules/steam.nix
-    # ../../modules/bluetooth.nix
     ../../modules/networking.nix
-    #../../modules/fancontrol.nix
+    # ../../modules/bluetooth.nix
+    # ../../modules/fancontrol.nix
   ];
 
   networking.hostName = "hyprpunk";
