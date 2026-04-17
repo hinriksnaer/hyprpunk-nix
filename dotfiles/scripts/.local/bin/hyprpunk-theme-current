@@ -1,0 +1,49 @@
+#!/usr/bin/env fish
+# Get the currently active theme
+# Usage: hyprpunk-theme-current
+
+# Find themes directory - use active profile
+if test -n "$HYPRPUNK_PATH"; and test -d "$HYPRPUNK_PATH/themes"
+    # Using HYPRPUNK_PATH directly
+    set themes_dir "$HYPRPUNK_PATH/themes"
+else if test -n "$HYPRPUNK_USER"
+    set themes_dir "$HOME/.local/share/hyprpunk/themes"
+else
+    # Try to find relative to script location (for running from repo)
+    set script_dir (dirname (status -f))
+    set themes_dir (realpath "$script_dir/../../themes")
+end
+
+# First try active-theme.conf (most accurate for desktop)
+set active_theme_conf "$HOME/.config/hypr/active-theme.conf"
+if test -f "$active_theme_conf"
+    set current_line (grep "source.*themes.*hyprland.conf" $active_theme_conf 2>/dev/null)
+
+    if test -n "$current_line"
+        # Extract theme name from path
+        set theme_name (echo $current_line | sed 's|.*themes/\([^/]*\)/.*|\1|')
+
+        # Verify the theme directory actually exists
+        if test -d "$themes_dir/$theme_name"
+            # Format nicely: convert dashes to spaces and capitalize
+            echo $theme_name | sed 's/-/ /g; s/\b\(.\)/\u\1/g'
+            exit 0
+        end
+    end
+end
+
+# Fallback: try the common theme symlink (works for terminal-only)
+if test -L "$HOME/.config/hyprpunk/current/theme"
+    set theme_name (basename (readlink "$HOME/.config/hyprpunk/current/theme"))
+
+    # Verify the theme directory actually exists
+    if test -d "$themes_dir/$theme_name"
+        # Format nicely: convert dashes to spaces and capitalize
+        echo $theme_name | sed 's/-/ /g; s/\b\(.\)/\u\1/g'
+        exit 0
+    end
+end
+
+# No valid theme found
+echo ""
+exit 1

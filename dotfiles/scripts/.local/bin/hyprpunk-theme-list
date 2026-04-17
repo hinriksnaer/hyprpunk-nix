@@ -1,0 +1,26 @@
+#!/usr/bin/env fish
+# List all available themes in the themes directory
+# Usage: hyprpunk-theme-list
+
+# Find themes directory
+if test -n "$HYPRPUNK_PATH"; and test -d "$HYPRPUNK_PATH/themes"
+    set themes_dir "$HYPRPUNK_PATH/themes"
+else if test -d "$HOME/.local/share/hyprpunk/themes"
+    set themes_dir "$HOME/.local/share/hyprpunk/themes"
+else
+    # Try to find relative to script location (for running from repo)
+    set script_dir (dirname (status -f))
+    set themes_dir (realpath "$script_dir/../../themes")
+end
+
+# Check if themes directory exists
+if not test -d "$themes_dir"
+    echo "Error: Themes directory not found" >&2
+    exit 1
+end
+
+# List all themes in the directory
+for theme_dir in $themes_dir/*/
+    test -d "$theme_dir"; or continue
+    basename "$theme_dir"
+end | sort

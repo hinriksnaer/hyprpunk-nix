@@ -1,0 +1,86 @@
+{
+  description = "hyprpunk - NixOS configuration with modular tooling and dotfile management";
+
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+  };
+
+  outputs = { self, nixpkgs, ... }:
+    let
+      system = "x86_64-linux";
+      pkgs = nixpkgs.legacyPackages.${system};
+    in {
+
+      # ── Individually importable modules ──
+      nixosModules = {
+        # Base
+        base        = import ./modules/base.nix;
+
+        # Core tools
+        opencode    = import ./modules/opencode.nix;
+
+        # Shell & CLI
+        fish        = import ./modules/fish.nix;
+        cli-tools   = import ./modules/cli-tools.nix;
+
+        # Editors
+        neovim      = import ./modules/neovim.nix;
+
+        # Terminal tools
+        tmux        = import ./modules/tmux.nix;
+        btop        = import ./modules/btop.nix;
+        lazygit     = import ./modules/lazygit.nix;
+        yazi        = import ./modules/yazi.nix;
+        gh          = import ./modules/gh.nix;
+
+        # Dev toolchains
+        rust        = import ./modules/rust.nix;
+        python      = import ./modules/python.nix;
+        nodejs      = import ./modules/nodejs.nix;
+        golang      = import ./modules/golang.nix;
+        dev-tools   = import ./modules/dev-tools.nix;
+
+        # Desktop
+        hyprland    = import ./modules/hyprland.nix;
+        kitty       = import ./modules/kitty.nix;
+        rofi        = import ./modules/rofi.nix;
+        hyprlock    = import ./modules/hyprlock.nix;
+        waybar      = import ./modules/waybar.nix;
+        mako        = import ./modules/mako.nix;
+        thunar      = import ./modules/thunar.nix;
+        fonts       = import ./modules/fonts.nix;
+        audio       = import ./modules/audio.nix;
+        multimedia  = import ./modules/multimedia.nix;
+        flatpak     = import ./modules/flatpak.nix;
+        zen-browser = import ./modules/zen-browser.nix;
+        discord     = import ./modules/discord.nix;
+        obsidian    = import ./modules/obsidian.nix;
+
+        # Hardware
+        nvidia      = import ./modules/nvidia.nix;
+        bluetooth   = import ./modules/bluetooth.nix;
+        networking  = import ./modules/networking.nix;
+        fancontrol  = import ./modules/fancontrol.nix;
+
+        # Profiles (convenience bundles)
+        tooling     = import ./profiles/tooling.nix;
+        desktop     = import ./profiles/desktop.nix;
+        container   = import ./profiles/container.nix;
+      };
+
+      # ── Machine configurations ──
+      nixosConfigurations = {
+        desktop = nixpkgs.lib.nixosSystem {
+          inherit system;
+          modules = [
+            ./hosts/desktop/default.nix
+          ];
+        };
+      };
+
+      # ── Container images ──
+      packages.${system} = {
+        container = import ./containers/default.nix { inherit pkgs; };
+      };
+    };
+}
