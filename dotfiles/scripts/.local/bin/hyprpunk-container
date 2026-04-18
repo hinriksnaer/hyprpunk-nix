@@ -14,8 +14,9 @@
 set -euo pipefail
 
 IMAGE_NAME="hyprpunk-dev"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_DIR="$(dirname "$SCRIPT_DIR")"
+# Resolve symlink to find the actual repo
+REAL_SCRIPT="$(readlink -f "${BASH_SOURCE[0]}")"
+REPO_DIR="$(cd "$(dirname "$REAL_SCRIPT")/../../.." && pwd)"
 
 # ── Helpers ──
 
@@ -35,7 +36,7 @@ push_to() {
     IMAGE_PATH=$(nix build "$REPO_DIR#container" --no-link --print-out-paths)
     echo "==> Pushing to $host..."
     scp "$IMAGE_PATH" "${host}:hyprpunk-dev.tar.gz"
-    scp "$SCRIPT_DIR/hyprpunk-container" "${host}:hyprpunk-container"
+    scp "$(readlink -f "${BASH_SOURCE[0]}")" "${host}:hyprpunk-container"
     echo "==> Loading image on $host..."
     ssh "$host" "chmod +x ~/hyprpunk-container && podman load -i ~/hyprpunk-dev.tar.gz 2>/dev/null || docker load -i ~/hyprpunk-dev.tar.gz" 2>&1 | tail -1
 }
@@ -52,12 +53,21 @@ run_container() {
     fi
 
     $runtime rm -f "$IMAGE_NAME" 2>/dev/null || true
+
+    local mounts=()
+    local env_args=(-e "TERM=xterm-256color")
+
+    # Forward SSH agent socket (works with both local proton-pass and remote SSH forwarding)
+    if [ -n "${SSH_AUTH_SOCK:-}" ] && [ -S "$SSH_AUTH_SOCK" ]; then
+        mounts+=(-v "$SSH_AUTH_SOCK:/tmp/ssh-agent.sock")
+        env_args+=(-e "SSH_AUTH_SOCK=/tmp/ssh-agent.sock")
+    fi
+
     exec $runtime run -it --rm \
         --name "$IMAGE_NAME" \
         --hostname "$IMAGE_NAME" \
-        -v "$HOME/.ssh:/root/.ssh:ro" \
-        -e "TERM=xterm-256color" \
-        -e "SSH_AUTH_SOCK=${SSH_AUTH_SOCK:-}" \
+        "${mounts[@]}" \
+        "${env_args[@]}" \
         --entrypoint /bin/fish \
         "$IMAGE_NAME"
 }
