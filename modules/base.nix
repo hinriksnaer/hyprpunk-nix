@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ config, pkgs, lib, ... }:
 
 {
   # ── Nix settings ──
@@ -11,8 +11,8 @@
   nixpkgs.config.allowUnfree = true;
 
   # ── Boot ──
-  boot.loader.systemd-boot.enable = true;
-  boot.loader.efi.canTouchEfiVariables = true;
+  boot.loader.systemd-boot.enable = lib.mkDefault true;
+  boot.loader.efi.canTouchEfiVariables = lib.mkDefault true;
 
   # ── Locale ──
   time.timeZone = "America/New_York";

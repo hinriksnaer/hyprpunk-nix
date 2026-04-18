@@ -72,11 +72,27 @@
             ./hosts/desktop/default.nix
           ];
         };
+
+        container = nixpkgs.lib.nixosSystem {
+          inherit system;
+          modules = [
+            ./hosts/container/default.nix
+          ];
+        };
       };
 
       # ── Container images ──
       packages.${system} = {
-        container = import ./containers/default.nix { inherit pkgs; };
+        container =
+          let
+            # Evaluate the container host config to extract its packages
+            containerConfig = self.nixosConfigurations.container.config;
+            containerPackages = containerConfig.environment.systemPackages;
+          in
+          import ./containers/default.nix {
+            inherit pkgs;
+            packages = containerPackages;
+          };
       };
     };
 }
