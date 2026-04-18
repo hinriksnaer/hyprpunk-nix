@@ -15,7 +15,7 @@
   boot.loader.efi.canTouchEfiVariables = true;
 
   # ── Locale ──
-  time.timeZone = "Atlantic/Reykjavik";
+  time.timeZone = "America/New_York";
   i18n.defaultLocale = "en_US.UTF-8";
 
   # ── Users ──

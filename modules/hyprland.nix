@@ -1,9 +1,11 @@
 { pkgs, ... }:
 
 {
-  # Hyprland compositor
+  # Hyprland compositor with UWSM for proper systemd session management
+  # See: https://wiki.nixos.org/wiki/Hyprland
   programs.hyprland = {
     enable = true;
+    withUWSM = true;
     xwayland.enable = true;
   };
 
@@ -31,16 +33,6 @@
     wlr-randr
     wlogout
   ];
-
-  # UWSM session manager (proper systemd integration, env vars, service ordering)
-  programs.uwsm = {
-    enable = true;
-    waylandCompositors.hyprland = {
-      prettyName = "Hyprland";
-      comment = "Hyprland compositor managed by UWSM";
-      binPath = "/run/current-system/sw/bin/start-hyprland";
-    };
-  };
 
   # Wayland environment variables
   environment.sessionVariables = {

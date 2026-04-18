@@ -31,6 +31,8 @@ if test -S $HOME/.ssh/proton-pass-agent.sock
     set -gx SSH_AUTH_SOCK $HOME/.ssh/proton-pass-agent.sock
 end
 
+
+
 # Source virtual environment if it exists
 if test -f ~/.venv/bin/activate.fish
     source ~/.venv/bin/activate.fish

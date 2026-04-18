@@ -12,7 +12,16 @@
       CursorTheme = "Adwaita";
       CursorSize = "24";
     };
+    settings.General = {
+      GreeterEnvironment = "WLR_NO_HARDWARE_CURSORS=1,LIBGL_ALWAYS_SOFTWARE=1,XCURSOR_THEME=Adwaita,XCURSOR_SIZE=24";
+    };
   };
+
+  # Default cursor theme (makes Adwaita available system-wide including SDDM)
+  environment.etc."icons/default/index.theme".text = ''
+    [Icon Theme]
+    Inherits=Adwaita
+  '';
 
   # Override theme config with hyprpunk colors
   environment.etc."sddm/themes/sddm-astronaut-theme/theme.conf.user".text = ''
