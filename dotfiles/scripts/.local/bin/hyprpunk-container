@@ -93,12 +93,12 @@ run_container() {
         env_args+=(-e "SSH_AUTH_SOCK=/tmp/ssh-agent.sock")
     fi
 
-    mounts+=(-v "${IMAGE_NAME}-work:/home/softmax/work")
+    mounts+=(-v "${IMAGE_NAME}-work:/home/hawker/work")
 
     # Run setup script on first entry for project containers
     local setup_cmd=""
     if [ "$IMAGE" = "helion" ]; then
-        setup_cmd="bash /home/softmax/hyprpunk-nix/containers/helion-setup.sh && "
+        setup_cmd="bash ~/hawker/containers/helion-setup.sh && "
     fi
 
     exec $runtime run -it --rm \

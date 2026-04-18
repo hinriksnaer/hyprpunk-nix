@@ -1,12 +1,12 @@
-# hyprpunk-nix
+# hawker
 
-NixOS + Hyprland desktop. NVIDIA, modular themes, reproducible containers.
+Chuck the system anywhere. NixOS desktop, dev containers, remote GPU clusters -- same config.
 
 ## Setup
 
 ```bash
-git clone git@github.com:hinriksnaer/hyprpunk-nix.git ~/hyprpunk-nix
-sudo nixos-rebuild switch --flake ~/hyprpunk-nix#desktop
+git clone git@github.com:hinriksnaer/hawker.git ~/hawker
+sudo nixos-rebuild switch --flake ~/hawker#desktop
 ./bootstrap.sh
 ```
 
@@ -14,6 +14,9 @@ sudo nixos-rebuild switch --flake ~/hyprpunk-nix#desktop
 
 ```
 hosts/          Machines (hardware + components)
+  desktop/        Hyprland desktop (NVIDIA, themes, apps)
+  container/      Dev container (terminal tools only)
+  helion/         GPU compiler dev (CUDA + PyTorch + terminal tools)
 components/     Composable groups
   terminal.nix    fish, kitty, tmux, neovim, btop, lazygit, yazi, opencode, cli-tools, gh
   ui.nix          hyprland, sddm, waybar, rofi, mako, hyprlock, fonts, screenshot, cliphist
@@ -21,7 +24,17 @@ components/     Composable groups
   media.nix       pipewire audio
 modules/        Individual NixOS modules
 dotfiles/       Stow packages (each with optional modules.d/ and theme-hooks.d/)
-containers/     OCI container image (same packages as terminal component)
+containers/     OCI container images (built from host configs, no Dockerfile)
+```
+
+## Containers
+
+Same flake, different targets:
+
+```bash
+hyprpunk-container build                        # dev container
+hyprpunk-container --image helion build          # Helion GPU container
+hyprpunk-container --image helion deploy ibm-kaiba  # build + push + enter
 ```
 
 ## Themes
@@ -33,18 +46,6 @@ Super+T          Theme picker
 Super+Shift+T    Next theme
 Super+W          Wallpaper picker
 Super+Shift+W    Next wallpaper
-```
-
-Modular: each stow package registers its own theme hook in `~/.config/hyprpunk/theme-hooks.d/`.
-
-## Containers
-
-Build a NixOS container image with your terminal tools -- no Dockerfile needed:
-
-```bash
-nix build .#container                              # build image
-podman load -i ./result                            # load locally
-./containers/push.sh ibm-kaiba                     # or push to remote host
 ```
 
 ## Adding a Machine

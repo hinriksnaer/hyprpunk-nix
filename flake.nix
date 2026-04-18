@@ -1,5 +1,5 @@
 {
-  description = "hyprpunk - NixOS configuration with modular tooling and dotfile management";
+  description = "hawker - NixOS configuration. Chuck the system anywhere.";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";

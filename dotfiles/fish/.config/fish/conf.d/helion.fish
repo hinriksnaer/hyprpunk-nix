@@ -1,5 +1,5 @@
 # Auto-activate Helion venv if it exists
-if test -f /home/softmax/work/helion/.venv/bin/activate.fish
-    source /home/softmax/work/helion/.venv/bin/activate.fish
-    cd /home/softmax/work/helion
+if test -f $HOME/work/helion/.venv/bin/activate.fish
+    source $HOME/work/helion/.venv/bin/activate.fish
+    cd $HOME/work/helion
 end

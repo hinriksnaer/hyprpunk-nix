@@ -19,7 +19,7 @@
   i18n.defaultLocale = "en_US.UTF-8";
 
   # ── Users ──
-  users.users.softmax = {
+  users.users.hawker = {
     isNormalUser = true;
     extraGroups = [ "wheel" "video" "audio" "networkmanager" "docker" ];
     shell = pkgs.fish;  # requires fish.nix in the same host config
