@@ -1,0 +1,136 @@
+#!/usr/bin/env bash
+# hyprpunk-container - manage dev containers locally and on remote hosts
+#
+# Usage:
+#   hyprpunk-container build                    Build the container image
+#   hyprpunk-container run                      Run locally
+#   hyprpunk-container push <host>              Build + push to remote host
+#   hyprpunk-container enter <host>             Enter container on remote host
+#   hyprpunk-container deploy <host>            Build + push + enter
+#   hyprpunk-container status [host]            Check if container is running
+#   hyprpunk-container stop [host]              Stop running container
+#   hyprpunk-container update <host>            Rebuild + push (no enter)
+
+set -euo pipefail
+
+IMAGE_NAME="hyprpunk-dev"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="$(dirname "$SCRIPT_DIR")"
+
+# ── Helpers ──
+
+build() {
+    echo "==> Building container image..."
+    IMAGE_PATH=$(nix build "$REPO_DIR#container" --no-link --print-out-paths)
+    echo "    $IMAGE_PATH"
+}
+
+load_local() {
+    IMAGE_PATH=$(nix build "$REPO_DIR#container" --no-link --print-out-paths)
+    podman load -i "$IMAGE_PATH" 2>&1 | tail -1
+}
+
+push_to() {
+    local host="$1"
+    IMAGE_PATH=$(nix build "$REPO_DIR#container" --no-link --print-out-paths)
+    echo "==> Pushing to $host..."
+    scp "$IMAGE_PATH" "${host}:hyprpunk-dev.tar.gz"
+    scp "$SCRIPT_DIR/hyprpunk-container" "${host}:hyprpunk-container"
+    echo "==> Loading image on $host..."
+    ssh "$host" "chmod +x ~/hyprpunk-container && podman load -i ~/hyprpunk-dev.tar.gz 2>/dev/null || docker load -i ~/hyprpunk-dev.tar.gz" 2>&1 | tail -1
+}
+
+run_container() {
+    local runtime
+    if command -v podman &>/dev/null; then
+        runtime=podman
+    elif command -v docker &>/dev/null; then
+        runtime=docker
+    else
+        echo "Error: podman or docker required"
+        exit 1
+    fi
+
+    $runtime rm -f "$IMAGE_NAME" 2>/dev/null || true
+    exec $runtime run -it --rm \
+        --name "$IMAGE_NAME" \
+        --hostname "$IMAGE_NAME" \
+        -v "$HOME/.ssh:/root/.ssh:ro" \
+        -e "TERM=xterm-256color" \
+        -e "SSH_AUTH_SOCK=${SSH_AUTH_SOCK:-}" \
+        --entrypoint /bin/fish \
+        "$IMAGE_NAME"
+}
+
+# ── Commands ──
+
+case "${1:-help}" in
+    build)
+        build
+        ;;
+
+    run)
+        echo "==> Loading image..."
+        load_local
+        echo "==> Starting container..."
+        run_container
+        ;;
+
+    push|update)
+        [ $# -lt 2 ] && echo "Usage: $0 push <host>" && exit 1
+        build
+        push_to "$2"
+        echo "==> Done. Enter with: $0 enter $2"
+        ;;
+
+    enter)
+        if [ $# -ge 2 ]; then
+            ssh -tt "$2" '~/hyprpunk-container run-local'
+        else
+            run_container
+        fi
+        ;;
+
+    deploy)
+        [ $# -lt 2 ] && echo "Usage: $0 deploy <host>" && exit 1
+        build
+        push_to "$2"
+        echo "==> Entering container..."
+        ssh -tt "$2" '~/hyprpunk-container run-local'
+        ;;
+
+    run-local)
+        # Called on the remote host by 'enter' and 'deploy'
+        run_container
+        ;;
+
+    status)
+        if [ $# -ge 2 ]; then
+            ssh "$2" "podman ps -f name=$IMAGE_NAME 2>/dev/null || docker ps -f name=$IMAGE_NAME 2>/dev/null"
+        else
+            podman ps -f "name=$IMAGE_NAME" 2>/dev/null || docker ps -f "name=$IMAGE_NAME" 2>/dev/null
+        fi
+        ;;
+
+    stop)
+        if [ $# -ge 2 ]; then
+            ssh "$2" "podman stop $IMAGE_NAME 2>/dev/null || docker stop $IMAGE_NAME 2>/dev/null"
+        else
+            podman stop "$IMAGE_NAME" 2>/dev/null || docker stop "$IMAGE_NAME" 2>/dev/null
+        fi
+        ;;
+
+    help|*)
+        echo "hyprpunk-container - manage dev containers"
+        echo ""
+        echo "Usage:"
+        echo "  $0 build                Build the container image"
+        echo "  $0 run                  Run locally"
+        echo "  $0 push <host>          Build + push to remote host"
+        echo "  $0 enter [host]         Enter container (local or remote)"
+        echo "  $0 deploy <host>        Build + push + enter remote"
+        echo "  $0 status [host]        Check container status"
+        echo "  $0 stop [host]          Stop running container"
+        echo "  $0 update <host>        Rebuild + push (alias for push)"
+        ;;
+esac
