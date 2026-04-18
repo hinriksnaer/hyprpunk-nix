@@ -8,5 +8,6 @@
     ../modules/discord.nix
     ../modules/obsidian.nix
     ../modules/proton-pass.nix
+    ../modules/podman.nix
   ];
 }

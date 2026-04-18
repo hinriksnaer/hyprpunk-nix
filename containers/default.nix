@@ -1,8 +1,8 @@
 { pkgs }:
 
 let
-  # Container-safe packages (no GUI, no hardware)
-  containerPackages = with pkgs; [
+  # Mirror the terminal component packages -- no GUI, no hardware
+  packages = with pkgs; [
     # Shell
     fish
     starship
@@ -10,8 +10,6 @@ let
     # Editor
     neovim
     tree-sitter
-    ripgrep
-    fzf
 
     # Terminal tools
     tmux
@@ -19,35 +17,32 @@ let
     lazygit
     yazi
     gh
+    opencode
 
     # CLI tools
+    ripgrep
+    fd
+    fzf
+    zoxide
     lsd
     bat
-    fd
 
-    # Dev toolchains
-    rustup
-    mold
-    clang
-    python3
-    nodejs
-    go
+    # Build essentials
     git
     gcc
     gnumake
     cmake
     pkg-config
     openssl
+    openssl.dev
+    unzip
+    gnutar
 
-    # Core tools
-    opencode
-    google-cloud-sdk
+    # SSH
+    openssh
 
-    # Utilities
-    stow
-    curl
-    wget
-    which
+    # Core
+    bashInteractive
     coreutils
     findutils
     gnused
@@ -55,22 +50,19 @@ let
     gawk
     util-linux
     procps
+    curl
+    wget
+    which
     file
-    unzip
-    gnutar
-    zoxide
+    stow
+    cacert
   ];
 in
 pkgs.dockerTools.buildLayeredImage {
   name = "hyprpunk-dev";
   tag = "latest";
 
-  contents = containerPackages ++ [
-    # Provide a basic environment
-    pkgs.bashInteractive
-    pkgs.coreutils
-    pkgs.cacert
-  ];
+  contents = packages;
 
   config = {
     Env = [
@@ -79,14 +71,10 @@ pkgs.dockerTools.buildLayeredImage {
       "EDITOR=nvim"
       "VISUAL=nvim"
       "SHELL=${pkgs.fish}/bin/fish"
-      "CLAUDE_CODE_USE_VERTEX=1"
-      "CLOUD_ML_REGION=us-east5"
-      "ANTHROPIC_VERTEX_PROJECT_ID=itpc-gcp-ai-eng-claude"
-      "GOOGLE_CLOUD_PROJECT=itpc-gcp-ai-eng-claude"
-      "VERTEX_LOCATION=global"
       "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+      "NIX_SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
     ];
     Cmd = [ "${pkgs.fish}/bin/fish" ];
-    WorkingDir = "/root";
+    WorkingDir = "/home/softmax";
   };
 }
