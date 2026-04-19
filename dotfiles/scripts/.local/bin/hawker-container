@@ -20,7 +20,7 @@ set -euo pipefail
 
 # Resolve symlink to find the actual repo
 REAL_SCRIPT="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || echo "${BASH_SOURCE[0]}")"
-REPO_DIR="$(cd "$(dirname "$REAL_SCRIPT")/../../.." 2>/dev/null && pwd 2>/dev/null || echo "")"
+REPO_DIR="$(cd "$(dirname "$REAL_SCRIPT")/../../../.." 2>/dev/null && pwd 2>/dev/null || echo "")"
 
 IMAGE_NAME="hawker-dev"
 FLAKE_REF="${REPO_DIR}"
