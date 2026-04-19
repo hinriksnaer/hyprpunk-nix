@@ -22,10 +22,12 @@ in
   i18n.defaultLocale = "en_US.UTF-8";
 
   # ── Users ──
+  # Base groups only. Other modules add their own groups
+  # (e.g. podman adds "docker", audio adds "audio").
   users.users.${username} = {
     isNormalUser = true;
-    extraGroups = [ "wheel" "video" "audio" "networkmanager" "docker" ];
-    shell = pkgs.fish;  # requires fish.nix in the same host config
+    extraGroups = [ "wheel" ];
+    shell = pkgs.fish;
   };
 
   # Expose username to scripts/dotfiles at runtime

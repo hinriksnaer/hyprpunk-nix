@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ pkgs, settings, ... }:
 
 {
   # PipeWire audio stack
@@ -16,6 +16,8 @@
 
   # RealtimeKit for PipeWire scheduling priority
   security.rtkit.enable = true;
+
+  users.users.${settings.username}.extraGroups = [ "audio" ];
 
   environment.systemPackages = with pkgs; [
     pavucontrol

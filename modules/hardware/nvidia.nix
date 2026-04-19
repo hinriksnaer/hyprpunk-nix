@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ config, pkgs, settings, ... }:
 
 {
   # NVIDIA proprietary drivers
@@ -25,6 +25,8 @@
   };
 
   # Wayland + NVIDIA environment
+  users.users.${settings.username}.extraGroups = [ "video" ];
+
   environment.sessionVariables = {
     LIBVA_DRIVER_NAME = "nvidia";
     GBM_BACKEND = "nvidia-drm";
