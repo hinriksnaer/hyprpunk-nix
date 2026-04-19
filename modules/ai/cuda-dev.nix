@@ -14,9 +14,11 @@ in
     python3Packages.virtualenv
     uv
 
-    # CUDA -- individual packages for proper include/lib paths
+    # CUDA -- individual packages + dev outputs for headers
     cudaPackages.cudatoolkit
     cudaPackages.cudnn
+    cudaPackages.cudnn.dev
+    cudaPackages.cudnn.lib
     cudaPackages.cuda_cudart
     cudaPackages.cuda_nvcc
 
@@ -32,9 +34,9 @@ in
   environment.sessionVariables = {
     CUDA_HOME = "${cudaPackages.cudatoolkit}";
     CUDA_PATH = "${cudaPackages.cudatoolkit}";
-    CUDNN_INCLUDE_DIR = "${cudaPackages.cudnn}/include";
-    CUDNN_LIB_DIR = "${cudaPackages.cudnn}/lib";
-    # nvcc calls gcc which needs to find cuda_runtime.h from cuda_cudart
-    CPATH = "${cudaPackages.cuda_cudart}/include";
+    CUDNN_INCLUDE_DIR = "${cudaPackages.cudnn.dev}/include";
+    CUDNN_LIB_DIR = "${cudaPackages.cudnn.lib}/lib";
+    # nvcc calls gcc which needs cuda_runtime.h + cudnn.h
+    CPATH = "${cudaPackages.cuda_cudart}/include:${cudaPackages.cudnn.dev}/include";
   };
 }

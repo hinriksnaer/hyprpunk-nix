@@ -34,8 +34,10 @@ in
       NCCL_LIB_DIR = "${nccl}/lib";
       USE_CUDA = "1";
       USE_CUDNN = "1";
+      CUDNN_ROOT = "${pkgs.cudaPackages.cudnn}";
       USE_NCCL = "1";
       USE_SYSTEM_NCCL = "1";
+      USE_CUFILE = "OFF";  # cuFile (GPU Direct Storage) not in Nix CUDA packages
       MAX_JOBS = "16";
       CMAKE_C_COMPILER_LAUNCHER = "ccache";
       CMAKE_CXX_COMPILER_LAUNCHER = "ccache";
