@@ -2,12 +2,28 @@
 
 Chuck the system anywhere. NixOS desktop, dev containers, remote GPU clusters -- same config.
 
-## Setup
+## Install
+
+### Fresh install (from NixOS live USB)
+
+```bash
+# 1. Partition & mount disks, then:
+nixos-generate-config --root /mnt
+# 2. Copy /mnt/etc/nixos/hardware-configuration.nix to hosts/desktop/
+nixos-install --flake github:hinriksnaer/hawker#desktop
+# 3. Reboot, log in, then:
+git clone git@github.com:hinriksnaer/hawker.git ~/hawker
+cd ~/hawker && bash bootstrap.sh
+```
+
+### Existing NixOS system
 
 ```bash
 git clone git@github.com:hinriksnaer/hawker.git ~/hawker
+nixos-generate-config --dir ~/hawker/hosts/desktop/
+# Edit settings.nix -- set username to match your user
 sudo nixos-rebuild switch --flake ~/hawker#desktop
-./bootstrap.sh
+bash bootstrap.sh
 ```
 
 ## Structure
