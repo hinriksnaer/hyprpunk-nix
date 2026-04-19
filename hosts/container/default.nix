@@ -19,9 +19,9 @@ in
     ../../components/terminal-headless.nix
   ] ++ enabledModules;
 
-  # Backend selection from settings (only applies if helion module is imported)
-  helion.backend = lib.mkIf (builtins.elem "helion" (settings.projects or []))
-    (settings.helion.backend or "cuda");
+  # Helion options from settings (only applies if helion module is imported)
+  helion.cute = lib.mkIf (builtins.elem "helion" (settings.projects or []))
+    (settings.helion.cute or false);
 
   # Container-specific: no bootloader, no hardware
   boot.loader.systemd-boot.enable = lib.mkForce false;

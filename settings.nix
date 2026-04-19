@@ -11,9 +11,9 @@
 
   # Helion configuration
   helion = {
-    # Hardware backend for GPU kernel compilation.
-    # "cuda" -- NVIDIA CUDA toolkit + cuDNN
-    # "cute" -- CUDA + cuDNN + CUTLASS (for CuTe kernels)
-    backend = "cuda";
+    # Enable CUTLASS/CuTe kernel development (adds cutlass package
+    # and installs helion with [cute-cu12] extras).
+    # CUDA toolkit + cuDNN are always included.
+    cute = false;
   };
 }
