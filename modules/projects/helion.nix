@@ -57,7 +57,6 @@ in
       clang_20
       zlib
       ninja
-      pkg-config
     ] ++ backendPackages.${cfg.backend};
 
     environment.sessionVariables = backendEnv.${cfg.backend} // {

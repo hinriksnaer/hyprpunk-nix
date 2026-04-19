@@ -22,7 +22,6 @@
     unzip
     gnutar
 
-    # Clipboard
-    wl-clipboard
+
   ];
 }

@@ -15,8 +15,8 @@ in
     # Base system (core packages, nix settings, locale)
     ../../modules/base.nix
 
-    # Terminal component (same tools as desktop)
-    ../../components/terminal.nix
+    # Terminal tools (headless -- no kitty/Wayland deps)
+    ../../components/terminal-headless.nix
   ] ++ enabledModules;
 
   # Backend selection for helion (only applies if helion module is imported)

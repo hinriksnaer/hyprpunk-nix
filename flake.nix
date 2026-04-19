@@ -63,7 +63,8 @@
         helion      = import ./modules/projects/helion.nix;
 
         # Components (composable module collections)
-        terminal    = import ./components/terminal.nix;
+        terminal          = import ./components/terminal.nix;
+        terminal-headless = import ./components/terminal-headless.nix;
         ui          = import ./components/ui.nix;
         apps        = import ./components/apps.nix;
         media       = import ./components/media.nix;
