@@ -60,17 +60,23 @@ push_to() {
     rsync -a --delete --exclude='.git' --chmod=Du+rwx,Fu+rw \
         "$REPO_DIR/" "${host}:~/hawker/"
 
-    echo "==> Building container image..."
-    local stream_script
-    stream_script=$(nix build "${FLAKE_REF}#container" --no-link --print-out-paths)
+    # Check if remote has Nix -- if so, build remotely (pulls from cache.nixos.org)
+    if ssh "$host" "nix --version" &>/dev/null; then
+        echo "==> Building container on $host (remote build)..."
+        local stream_script
+        stream_script=$(ssh "$host" "cd ~/hawker && nix build .#container --no-link --print-out-paths 2>&1 | tail -1")
 
-    echo "==> Copying Nix closure to $host (incremental)..."
-    nix copy --to "ssh://$host" "${FLAKE_REF}#container"
+        echo "==> Loading image on $host..."
+        ssh "$host" "$stream_script | podman load 2>&1 || $stream_script | docker load 2>&1"
+    else
+        # Fallback: build locally, stream via SSH
+        echo "==> Building container locally..."
+        local stream_script
+        stream_script=$(nix build "${FLAKE_REF}#container" --no-link --print-out-paths)
 
-    # Load the image into podman/docker on the remote using the stream script
-    # that's now in the remote's Nix store
-    echo "==> Loading image on $host..."
-    ssh "$host" "$stream_script | podman load 2>&1 || $stream_script | docker load 2>&1"
+        echo "==> Streaming image to $host..."
+        "$stream_script" | ssh "$host" "podman load 2>&1 || docker load 2>&1"
+    fi
 }
 
 run_container() {
