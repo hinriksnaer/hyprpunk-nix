@@ -34,12 +34,13 @@ fi
 cd "$WORKSPACE"
 
 echo "==> Installing PyTorch dev dependencies..."
-pip install --group dev
+uv pip install -r requirements.txt
+uv pip install pytest expecttest hypothesis pyrefly
 
 echo "==> Installing PyTorch in editable mode (compiles from source)..."
 echo "    This takes 30-60 minutes on first build."
-echo "    Set MAX_JOBS to control parallelism."
-python -m pip install --no-build-isolation -v -e .
+echo "    MAX_JOBS=${MAX_JOBS:-auto}"
+pip install --no-build-isolation -v -e .
 
 touch "$MARKER"
 echo "==> PyTorch workspace ready"
