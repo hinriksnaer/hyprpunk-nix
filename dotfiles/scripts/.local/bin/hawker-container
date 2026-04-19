@@ -1,30 +1,59 @@
 #!/usr/bin/env bash
-# hawker-container - manage the dev container locally and on remote hosts
+# hawker-container - manage dev environments locally and on remote hosts
+#
+# Uses Nix natively when available (incremental deploys via nix copy),
+# falls back to container streaming for hosts without Nix.
 #
 # Usage:
 #   hawker-container <command> [args]
 #
 # Commands:
-#   build                    Build the container image
-#   run                      Build + load + run locally
-#   push <host>              Build + push to remote host
-#   enter [host]             Enter container (local or remote)
-#   deploy <host>            Build + push + enter
-#   status [host]            Check if container is running
-#   stop [host]              Stop running container
+#   deploy <host>            Sync repo + Nix closure to remote, enter dev shell
+#   enter [host]             Enter dev shell (local or remote)
+#   push <host>              Sync repo + Nix closure without entering
+#   status [host]            Check Nix availability on host
+#
+# Container fallback (for hosts without Nix):
+#   container-deploy <host>  Build + stream container image + enter
+#   container-run             Build + run container locally
 
 set -euo pipefail
 
+# Resolve symlink to find the actual repo
+REAL_SCRIPT="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || echo "${BASH_SOURCE[0]}")"
+REPO_DIR="$(cd "$(dirname "$REAL_SCRIPT")/../../.." 2>/dev/null && pwd 2>/dev/null || echo "")"
+
 IMAGE_NAME="hawker-dev"
-
-# Resolve symlink to find the actual repo (when run locally)
-if [ -L "${BASH_SOURCE[0]}" ] || [ -f "${BASH_SOURCE[0]}" ]; then
-    REAL_SCRIPT="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || echo "${BASH_SOURCE[0]}")"
-    REPO_DIR="$(cd "$(dirname "$REAL_SCRIPT")/../../.." 2>/dev/null && pwd 2>/dev/null || echo "")"
-fi
 FLAKE_OUTPUT="container"
+FLAKE_REF="${REPO_DIR}"
 
-# ── Helpers ──
+# ── Nix-native helpers ──
+
+push_nix() {
+    local host="$1"
+
+    echo "==> Syncing repo to $host..."
+    rsync -a --delete --exclude='.git' --chmod=Du+rwx,Fu+rw \
+        "$REPO_DIR/" "${host}:~/hawker/"
+
+    echo "==> Building dev shell..."
+    nix build "${FLAKE_REF}#devShells.x86_64-linux.default" --no-link
+
+    echo "==> Copying Nix closure to $host (only changed paths)..."
+    nix copy --to "ssh://$host" "${FLAKE_REF}#devShells.x86_64-linux.default"
+}
+
+enter_remote() {
+    local host="$1"
+    ssh -A -tt "$host" "cd ~/hawker && nix develop --command fish"
+}
+
+enter_local() {
+    cd "$REPO_DIR"
+    exec nix develop --command fish
+}
+
+# ── Container fallback helpers ──
 
 detect_runtime() {
     if command -v podman &>/dev/null; then
@@ -39,12 +68,10 @@ detect_runtime() {
 
 detect_gpu_flags() {
     local runtime="$1"
-    # Check if NVIDIA GPUs are available
     if command -v nvidia-smi &>/dev/null && nvidia-smi &>/dev/null; then
         if [ "$runtime" = "docker" ]; then
             echo "--gpus all"
         else
-            # Podman: use CDI if available, fall back to --device
             if [ -d "/etc/cdi" ] || [ -d "/var/run/cdi" ]; then
                 echo "--device nvidia.com/gpu=all"
             else
@@ -54,32 +81,15 @@ detect_gpu_flags() {
     fi
 }
 
-build() {
-    echo "==> Building $IMAGE_NAME..."
-    STREAM_SCRIPT=$(nix build "${REPO_DIR}#${FLAKE_OUTPUT}" --no-link --print-out-paths)
-    echo "    $STREAM_SCRIPT"
-}
-
-load_local() {
-    STREAM_SCRIPT=$(nix build "${REPO_DIR}#${FLAKE_OUTPUT}" --no-link --print-out-paths)
-    echo "==> Loading $IMAGE_NAME..."
-    "$STREAM_SCRIPT" | $(detect_runtime) load
-}
-
-push_to() {
+container_push() {
     local host="$1"
     STREAM_SCRIPT=$(nix build "${REPO_DIR}#${FLAKE_OUTPUT}" --no-link --print-out-paths)
-
-    # Push the hawker-container script to the remote
     rsync --chmod=u+rwx "$(readlink -f "${BASH_SOURCE[0]}")" "${host}:hawker-container"
-
-    # Stream the image directly to the remote's container runtime via SSH pipe.
-    # No tarball written to disk on either side.
     echo "==> Streaming $IMAGE_NAME to $host..."
     "$STREAM_SCRIPT" | ssh "$host" "podman load 2>&1 || docker load 2>&1"
 }
 
-run_container() {
+container_run() {
     local runtime
     runtime=$(detect_runtime)
 
@@ -89,7 +99,6 @@ run_container() {
     local env_args=(-e "TERM=xterm-256color")
     local extra_args=()
 
-    # GPU passthrough
     local gpu_flags
     gpu_flags=$(detect_gpu_flags "$runtime")
     if [ -n "$gpu_flags" ]; then
@@ -97,16 +106,13 @@ run_container() {
         extra_args+=($gpu_flags)
     fi
 
-    # Forward SSH agent socket
     if [ -n "${SSH_AUTH_SOCK:-}" ] && [ -S "$SSH_AUTH_SOCK" ]; then
         mounts+=(-v "$SSH_AUTH_SOCK:/tmp/ssh-agent.sock")
         env_args+=(-e "SSH_AUTH_SOCK=/tmp/ssh-agent.sock")
     fi
 
-    # Persistent work volume
     mounts+=(-v "${IMAGE_NAME}-work:/home/${HAWKER_USER:-$USER}/work")
 
-    # Run project setup scripts on entry (idempotent -- each checks its own marker)
     local setup_cmd=""
     local projects="${HAWKER_PROJECTS:-}"
     if [ -n "$projects" ]; then
@@ -128,74 +134,74 @@ run_container() {
 # ── Commands ──
 
 case "${1:-help}" in
-    build)
-        build
-        ;;
-
-    run)
-        load_local
-        echo "==> Starting $IMAGE_NAME..."
-        run_container
-        ;;
-
-    push|update)
-        [ $# -lt 2 ] && echo "Usage: $0 push <host>" && exit 1
-        push_to "$2"
-        echo "==> Done. Enter with: $0 enter $2"
+    deploy)
+        [ $# -lt 2 ] && echo "Usage: $0 deploy <host>" && exit 1
+        push_nix "$2"
+        echo "==> Entering dev shell..."
+        enter_remote "$2"
         ;;
 
     enter)
         if [ $# -ge 2 ]; then
-            ssh -A -tt "$2" "~/hawker-container run-local"
+            enter_remote "$2"
         else
-            run_container
+            enter_local
         fi
         ;;
 
-    deploy)
-        [ $# -lt 2 ] && echo "Usage: $0 deploy <host>" && exit 1
-        push_to "$2"
-        echo "==> Entering container..."
-        ssh -A -tt "$2" "~/hawker-container run-local"
-        ;;
-
-    run-local)
-        run_container
+    push)
+        [ $# -lt 2 ] && echo "Usage: $0 push <host>" && exit 1
+        push_nix "$2"
+        echo "==> Done. Enter with: $0 enter $2"
         ;;
 
     status)
         if [ $# -ge 2 ]; then
-            ssh "$2" "podman ps -f name=$IMAGE_NAME 2>/dev/null || docker ps -f name=$IMAGE_NAME 2>/dev/null"
+            echo "==> Checking $2..."
+            ssh "$2" "nix --version 2>/dev/null && echo 'Nix: available' || echo 'Nix: not installed'"
+            ssh "$2" "podman --version 2>/dev/null || docker --version 2>/dev/null || echo 'No container runtime'"
+            ssh "$2" "nvidia-smi --query-gpu=gpu_name --format=csv,noheader 2>/dev/null || echo 'No GPUs detected'"
         else
-            podman ps -f "name=$IMAGE_NAME" 2>/dev/null || docker ps -f "name=$IMAGE_NAME" 2>/dev/null
+            nix --version
+            podman --version 2>/dev/null || docker --version 2>/dev/null || echo 'No container runtime'
+            nvidia-smi --query-gpu=gpu_name --format=csv,noheader 2>/dev/null || echo 'No GPUs detected'
         fi
         ;;
 
-    stop)
-        if [ $# -ge 2 ]; then
-            ssh "$2" "podman stop $IMAGE_NAME 2>/dev/null || docker stop $IMAGE_NAME 2>/dev/null"
-        else
-            podman stop "$IMAGE_NAME" 2>/dev/null || docker stop "$IMAGE_NAME" 2>/dev/null
-        fi
+    # ── Container fallback ──
+
+    container-deploy)
+        [ $# -lt 2 ] && echo "Usage: $0 container-deploy <host>" && exit 1
+        container_push "$2"
+        echo "==> Entering container..."
+        ssh -A -tt "$2" "~/hawker-container container-run"
+        ;;
+
+    container-run)
+        container_run
+        ;;
+
+    run-local)
+        # Backwards compat: remote hosts may still have old hawker-container
+        container_run
         ;;
 
     help|*)
-        echo "hawker-container - manage dev containers"
+        echo "hawker-container - manage dev environments"
         echo ""
-        echo "Usage:"
-        echo "  $0 build              Build container image"
-        echo "  $0 run                Build + run locally"
-        echo "  $0 push <host>        Build + push to remote"
-        echo "  $0 enter [host]       Enter container (local or remote)"
-        echo "  $0 deploy <host>      Build + push + enter"
-        echo "  $0 status [host]      Check status"
-        echo "  $0 stop [host]        Stop container"
+        echo "Nix-native (preferred):"
+        echo "  $0 deploy <host>          Sync + enter dev shell on remote"
+        echo "  $0 enter [host]           Enter dev shell (local or remote)"
+        echo "  $0 push <host>            Sync without entering"
+        echo "  $0 status [host]          Check Nix/GPU availability"
         echo ""
-        echo "Projects enabled (from settings.nix): \$HAWKER_PROJECTS"
+        echo "Container fallback (hosts without Nix):"
+        echo "  $0 container-deploy <host> Stream container image + enter"
+        echo "  $0 container-run           Run container locally"
         echo ""
         echo "Examples:"
-        echo "  $0 run                              Run locally"
-        echo "  $0 deploy ibm-kaiba                 Deploy to ibm-kaiba"
-        echo "  $0 enter ibm-kaiba                  Enter on ibm-kaiba"
+        echo "  $0 deploy ibm-kaiba       Deploy to ibm-kaiba via Nix"
+        echo "  $0 enter ibm-kaiba        Enter existing dev shell"
+        echo "  $0 enter                  Enter local dev shell"
         ;;
 esac

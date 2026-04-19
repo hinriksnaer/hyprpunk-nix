@@ -99,7 +99,42 @@
         container-build = self.packages.${system}.container;
       };
 
-      # ── Container image ──
+      # ── Dev shell (native Nix on any Linux host) ──
+      devShells.${system}.default = let
+        containerConfig = self.nixosConfigurations.container.config;
+        containerPackages = containerConfig.environment.systemPackages;
+        sessionVars = containerConfig.environment.sessionVariables;
+        projects = builtins.concatStringsSep "," (settings.projects or []);
+      in pkgs.mkShell {
+        packages = containerPackages;
+
+        shellHook = ''
+          export HAWKER_PATH="$HOME/.local/share/hawker"
+          export HAWKER_USER="${settings.username}"
+          export HAWKER_PROJECTS="${projects}"
+
+          # Project-specific env vars from NixOS module evaluation
+          ${builtins.concatStringsSep "\n" (
+            pkgs.lib.mapAttrsToList (k: v: "export ${k}=\"${v}\"") sessionVars
+          )}
+
+          # Non-NixOS hosts: expose host NVIDIA driver to Nix binaries.
+          # libcuda.so lives in the host's /usr/lib64, not in the Nix store.
+          if [ -d /usr/lib64 ] && [ ! -f /etc/NIXOS ]; then
+            export LD_LIBRARY_PATH="/usr/lib64''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          fi
+
+          # Run project setup scripts (idempotent)
+          for project in ''${HAWKER_PROJECTS//,/ }; do
+            setup="$HOME/hawker/containers/''${project}-setup.sh"
+            if [ -f "$setup" ]; then
+              bash "$setup"
+            fi
+          done
+        '';
+      };
+
+      # ── Container image (for CI and hosts without Nix) ──
       packages.${system} = let
         containerConfig = self.nixosConfigurations.container.config;
         containerPackages = containerConfig.environment.systemPackages;
