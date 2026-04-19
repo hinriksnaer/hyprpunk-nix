@@ -65,8 +65,8 @@
         cuda-dev    = import ./modules/ai/cuda-dev.nix;
 
         # Projects
-        helion      = import ./projects/helion.nix;
-        pytorch     = import ./projects/pytorch.nix;
+        helion      = import ./projects/helion;
+        pytorch     = import ./projects/pytorch;
 
         # Components (composable module collections)
         terminal          = import ./components/terminal.nix;
@@ -133,7 +133,7 @@
 
           # Run project setup scripts (idempotent)
           for project in ''${HAWKER_PROJECTS//,/ }; do
-            setup="$HOME/hawker/projects/''${project}-setup.sh"
+            setup="$HOME/hawker/projects/''${project}/setup.sh"
             if [ -f "$setup" ]; then
               bash "$setup"
             fi

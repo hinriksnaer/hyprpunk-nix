@@ -1,7 +1,7 @@
 { pkgs, lib, config, ... }:
 
 {
-  imports = [ ../modules/ai/cuda-dev.nix ];
+  imports = [ ../../modules/ai/cuda-dev.nix ];
 
   config = {
     environment.systemPackages = with pkgs; [
