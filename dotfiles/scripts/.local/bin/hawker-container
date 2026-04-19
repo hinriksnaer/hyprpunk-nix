@@ -115,7 +115,7 @@ run_container() {
         "${mounts[@]}" \
         "${env_args[@]}" \
         "${extra_args[@]}" \
-        "$IMAGE_NAME" \
+        "localhost/$IMAGE_NAME:latest" \
         bash -c "${setup_cmd}exec fish"
 }
 
