@@ -61,6 +61,7 @@
 
         # Projects
         helion      = import ./modules/projects/helion.nix;
+        pytorch     = import ./modules/projects/pytorch.nix;
 
         # Components (composable module collections)
         terminal          = import ./components/terminal.nix;

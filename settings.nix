@@ -6,17 +6,14 @@
 
   # Projects to include in the dev container.
   # Each entry pulls in project-specific packages and setup scripts.
-  # Available: "helion"
-  projects = [ "helion" ];
+  # Available: "helion", "pytorch"
+  projects = [ "helion" "pytorch" ];
 
   # Helion configuration
   helion = {
     # Hardware backends to enable. Not mutually exclusive -- enable multiple.
     # Available: "cuda", "cute"
     # Future: "rocm", "cpu"
-    #
-    # cuda -- NVIDIA CUDA toolkit + cuDNN (base GPU support)
-    # cute -- CUTLASS library (for CuTe kernel development)
     backends = [ "cuda" ];
   };
 }
