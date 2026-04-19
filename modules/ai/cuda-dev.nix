@@ -29,6 +29,7 @@ in
     gnumake
     pkg-config
     zlib
+    glibc.bin  # ldd (needed by cmake link verification)
   ];
 
   environment.sessionVariables = {
