@@ -56,18 +56,27 @@ detect_gpu_flags() {
 
 build() {
     echo "==> Building $IMAGE_NAME..."
-    IMAGE_PATH=$(nix build "${REPO_DIR}#${FLAKE_OUTPUT}" --no-link --print-out-paths)
-    echo "    $IMAGE_PATH"
+    STREAM_SCRIPT=$(nix build "${REPO_DIR}#${FLAKE_OUTPUT}" --no-link --print-out-paths)
+    echo "    $STREAM_SCRIPT"
+}
+
+load_local() {
+    STREAM_SCRIPT=$(nix build "${REPO_DIR}#${FLAKE_OUTPUT}" --no-link --print-out-paths)
+    echo "==> Loading $IMAGE_NAME..."
+    "$STREAM_SCRIPT" | $(detect_runtime) load
 }
 
 push_to() {
     local host="$1"
-    IMAGE_PATH=$(nix build "${REPO_DIR}#${FLAKE_OUTPUT}" --no-link --print-out-paths)
-    echo "==> Pushing $IMAGE_NAME to $host..."
-    rsync --progress --chmod=u+rw "$IMAGE_PATH" "${host}:${IMAGE_NAME}.tar.gz"
+    STREAM_SCRIPT=$(nix build "${REPO_DIR}#${FLAKE_OUTPUT}" --no-link --print-out-paths)
+
+    # Push the hawker-container script to the remote
     rsync --chmod=u+rwx "$(readlink -f "${BASH_SOURCE[0]}")" "${host}:hawker-container"
-    echo "==> Loading image on $host (this may take a minute)..."
-    ssh "$host" "podman load -i ~/${IMAGE_NAME}.tar.gz 2>&1 || docker load -i ~/${IMAGE_NAME}.tar.gz 2>&1"
+
+    # Stream the image directly to the remote's container runtime via SSH pipe.
+    # No tarball written to disk on either side.
+    echo "==> Streaming $IMAGE_NAME to $host..."
+    "$STREAM_SCRIPT" | ssh "$host" "podman load 2>&1 || docker load 2>&1"
 }
 
 run_container() {
@@ -124,16 +133,13 @@ case "${1:-help}" in
         ;;
 
     run)
-        echo "==> Loading $IMAGE_NAME..."
-        IMAGE_PATH=$(nix build "${REPO_DIR}#${FLAKE_OUTPUT}" --no-link --print-out-paths)
-        $(detect_runtime) load -i "$IMAGE_PATH" 2>&1
+        load_local
         echo "==> Starting $IMAGE_NAME..."
         run_container
         ;;
 
     push|update)
         [ $# -lt 2 ] && echo "Usage: $0 push <host>" && exit 1
-        build
         push_to "$2"
         echo "==> Done. Enter with: $0 enter $2"
         ;;
@@ -148,7 +154,6 @@ case "${1:-help}" in
 
     deploy)
         [ $# -lt 2 ] && echo "Usage: $0 deploy <host>" && exit 1
-        build
         push_to "$2"
         echo "==> Entering container..."
         ssh -A -tt "$2" "~/hawker-container run-local"
