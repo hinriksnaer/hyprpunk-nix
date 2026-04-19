@@ -61,8 +61,8 @@ if [ ! -f "$HOME/.gitconfig" ]; then
         GIT_NAME=$(nix eval --raw --file "$SCRIPT_DIR/settings.nix" git.name 2>/dev/null || true)
         GIT_EMAIL=$(nix eval --raw --file "$SCRIPT_DIR/settings.nix" git.email 2>/dev/null || true)
     fi
-    GIT_NAME="${GIT_NAME:-$(whoami)}"
-    GIT_EMAIL="${GIT_EMAIL:-$(whoami)@$(hostname)}"
+    GIT_NAME="${GIT_NAME:-$(whoami 2>/dev/null || echo user)}"
+    GIT_EMAIL="${GIT_EMAIL:-$(whoami 2>/dev/null || echo user)@$(hostname 2>/dev/null || echo localhost)}"
     cat > "$HOME/.gitconfig" <<EOF
 [user]
     name = $GIT_NAME
