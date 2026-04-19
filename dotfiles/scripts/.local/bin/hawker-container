@@ -109,8 +109,8 @@ run_container() {
         env_args+=(-e "SSH_AUTH_SOCK=/tmp/ssh-agent.sock")
     fi
 
-    # Persistent work volume
-    mounts+=(-v "${IMAGE_NAME}-work:/home/${HAWKER_USER:-$USER}/work")
+    # Persistent volume for all repos (~/repos/helion, ~/repos/pytorch, etc.)
+    mounts+=(-v "${IMAGE_NAME}-repos:/home/${HAWKER_USER:-$USER}/repos")
 
     # Project setup runs inside the container where HAWKER_PROJECTS is set.
     # Each setup script is idempotent (checks its own marker file).

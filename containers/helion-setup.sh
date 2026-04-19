@@ -7,7 +7,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/helion/config.sh"
 
-WORKSPACE="$HOME/work/helion"
+WORKSPACE="$HOME/repos/helion"
 VENV="$WORKSPACE/.venv"
 MARKER="$VENV/.helion-setup-done"
 
