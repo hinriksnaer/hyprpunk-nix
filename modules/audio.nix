@@ -19,6 +19,7 @@
 
   environment.systemPackages = with pkgs; [
     pavucontrol
+    pamixer      # CLI mixer (used by waybar right-click mute)
     playerctl
     alsa-utils
   ];

@@ -27,8 +27,17 @@ setup_test_env() {
   mkdir -p "$HOME/.config/waybar"
   touch "$HOME/.config/hypr/active-theme.conf"
 
-  # Scripts in PATH
-  export PATH="$REPO_DIR/dotfiles/scripts/.local/bin:$PATH"
+  # Stub out commands that must never run during tests.
+  # These create persistent processes or affect the live desktop.
+  local stubs_dir="$TEST_HOME/.stubs"
+  mkdir -p "$stubs_dir"
+  for cmd in swaybg notify-send hyprctl pkill killall playerctl; do
+    printf '#!/bin/sh\nexit 0\n' > "$stubs_dir/$cmd"
+    chmod +x "$stubs_dir/$cmd"
+  done
+
+  # Stubs go FIRST in PATH so they shadow real binaries
+  export PATH="$stubs_dir:$REPO_DIR/dotfiles/scripts/.local/bin:$PATH"
 }
 
 teardown_test_env() {

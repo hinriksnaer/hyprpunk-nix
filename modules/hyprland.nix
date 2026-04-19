@@ -19,8 +19,7 @@
   };
 
   environment.systemPackages = with pkgs; [
-    # Wallpaper
-    hyprpaper
+    # Wallpaper (swaybg only -- hyprpaper conflicts)
     swaybg
 
     # Wayland compatibility
