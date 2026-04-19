@@ -183,6 +183,21 @@ case "${1:-help}" in
         fi
         ;;
 
+    clean)
+        # Remove persistent volume (repos, venvs, setup markers)
+        if [ $# -ge 2 ]; then
+            echo "==> Cleaning $IMAGE_NAME on $2..."
+            ssh "$2" "podman stop $IMAGE_NAME 2>/dev/null; podman rm $IMAGE_NAME 2>/dev/null; podman volume rm ${IMAGE_NAME}-repos 2>/dev/null; podman rmi $IMAGE_NAME:latest 2>/dev/null; echo done"
+        else
+            echo "==> Cleaning local $IMAGE_NAME..."
+            $(detect_runtime) stop "$IMAGE_NAME" 2>/dev/null || true
+            $(detect_runtime) rm "$IMAGE_NAME" 2>/dev/null || true
+            $(detect_runtime) volume rm "${IMAGE_NAME}-repos" 2>/dev/null || true
+            $(detect_runtime) rmi "$IMAGE_NAME:latest" 2>/dev/null || true
+            echo "done"
+        fi
+        ;;
+
     help|*)
         echo "hawker-container - manage dev environments"
         echo ""
@@ -194,13 +209,12 @@ case "${1:-help}" in
         echo "  $0 shell [host]        Enter nix develop shell (no isolation)"
         echo "  $0 status [host]       Check Nix/GPU availability"
         echo "  $0 stop [host]         Stop running container"
-        echo ""
-        echo "Deploy uses nix copy for incremental transfers (only changed"
-        echo "store paths) + container runtime for isolation."
+        echo "  $0 clean [host]        Remove container, image, and repos volume"
         echo ""
         echo "Examples:"
         echo "  $0 deploy my-gpu-host   Deploy to remote host"
         echo "  $0 enter my-gpu-host   Enter existing container"
+        echo "  $0 clean my-gpu-host   Fresh start (removes repos/venvs)"
         echo "  $0 shell               Local dev shell (no container)"
         ;;
 esac
