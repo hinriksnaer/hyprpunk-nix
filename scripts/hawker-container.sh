@@ -100,12 +100,12 @@ case "${1:-help}" in
         [ $# -lt 2 ] && echo "Usage: $0 deploy <host>" && exit 1
         push_to "$2"
         echo "==> Entering container..."
-        ssh -A -tt "$2" "~/hawker/dotfiles/scripts/.local/bin/hawker-container run-local"
+        ssh -A -tt "$2" 'bash $HOME/hawker/scripts/hawker-container.sh run-local'
         ;;
 
     enter)
         if [ $# -ge 2 ]; then
-            ssh -A -tt "$2" "~/hawker/dotfiles/scripts/.local/bin/hawker-container run-local"
+            ssh -A -tt "$2" 'bash $HOME/hawker/scripts/hawker-container.sh run-local'
         else
             run_container
         fi
@@ -155,17 +155,18 @@ case "${1:-help}" in
 
     stop)
         if [ $# -ge 2 ]; then
-            ssh "$2" "podman stop $IMAGE_NAME 2>/dev/null || docker stop $IMAGE_NAME 2>/dev/null"
+            ssh "$2" "podman stop ${IMAGE_NAME} 2>/dev/null || docker stop ${IMAGE_NAME} 2>/dev/null"
         else
-            podman stop "$IMAGE_NAME" 2>/dev/null || docker stop "$IMAGE_NAME" 2>/dev/null
+            podman stop "${IMAGE_NAME}" 2>/dev/null || docker stop "${IMAGE_NAME}" 2>/dev/null
         fi
         ;;
 
     clean)
         # Remove persistent volume (repos, venvs, setup markers)
         if [ $# -ge 2 ]; then
-            echo "==> Cleaning $IMAGE_NAME on $2..."
-            ssh "$2" "podman stop $IMAGE_NAME 2>/dev/null; podman rm $IMAGE_NAME 2>/dev/null; podman volume rm ${IMAGE_NAME}-repos 2>/dev/null; podman rmi $IMAGE_NAME:latest 2>/dev/null; echo done"
+            echo "==> Cleaning ${IMAGE_NAME} on $2..."
+            # shellcheck disable=SC2029
+            ssh "$2" "podman stop ${IMAGE_NAME} 2>/dev/null; podman rm ${IMAGE_NAME} 2>/dev/null; podman volume rm ${IMAGE_NAME}-repos 2>/dev/null; podman rmi ${IMAGE_NAME}:latest 2>/dev/null; echo done"
         else
             echo "==> Cleaning local $IMAGE_NAME..."
             $(detect_runtime) stop "$IMAGE_NAME" 2>/dev/null || true

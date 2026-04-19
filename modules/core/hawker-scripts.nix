@@ -14,6 +14,9 @@ let
   mkBash = name: { runtimeInputs ? [] }: pkgs.writeShellApplication {
     inherit name runtimeInputs;
     text = builtins.readFile "${src}/${name}.sh";
+    # SC2029: variable expands client-side in ssh (intentional)
+    # SC2016: single-quoted string doesn't expand (intentional for ssh)
+    excludeShellChecks = [ "SC2029" "SC2016" ];
   };
 
   # Wrap a fish script with HAWKER_PATH set at build time

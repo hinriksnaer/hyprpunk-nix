@@ -22,7 +22,7 @@ for wp in "${WALLPAPERS[@]}"; do
     resolved=$(readlink -f "$wp")
     name=$(basename "$wp" | sed 's/\.[^.]*$//; s/\.[^.]*$//; s/-/ /g; s/_/ /g')
     if [[ "$resolved" == "$CURRENT_WALLPAPER" ]]; then
-        MENU_ITEMS+="● $name\x00icon\x1f$resolved\n"
+        MENU_ITEMS+="* $name\x00icon\x1f$resolved\n"
     else
         MENU_ITEMS+="  $name\x00icon\x1f$resolved\n"
     fi
@@ -44,7 +44,8 @@ if [[ -z "$SELECTED" ]]; then
     exit 0
 fi
 
-SELECTED_CLEAN=$(echo "$SELECTED" | sed 's/^[● ] *//')
+SELECTED_CLEAN="${SELECTED#\* }"
+SELECTED_CLEAN="${SELECTED_CLEAN# }"
 
 SELECTED_PATH=""
 for wp in "${WALLPAPERS[@]}"; do
