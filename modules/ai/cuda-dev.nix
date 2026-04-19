@@ -34,5 +34,7 @@ in
     CUDA_PATH = "${cudaPackages.cudatoolkit}";
     CUDNN_INCLUDE_DIR = "${cudaPackages.cudnn}/include";
     CUDNN_LIB_DIR = "${cudaPackages.cudnn}/lib";
+    # nvcc calls gcc which needs to find cuda_runtime.h from cuda_cudart
+    CPATH = "${cudaPackages.cuda_cudart}/include";
   };
 }
