@@ -2,13 +2,38 @@
 
 let
   cfg = config.helion;
+  has = backend: builtins.elem backend cfg.backends;
+
+  # Packages per backend
+  backendPackages = {
+    cuda = with pkgs; [ cudaPackages.cudatoolkit cudaPackages.cudnn ];
+    cute = with pkgs; [ cudaPackages.cutlass ];
+    # rocm = with pkgs; [ rocmPackages.clr rocmPackages.rocm-smi ];
+    # cpu = [];
+  };
+
+  # Env vars per backend
+  backendEnv = lib.optionalAttrs (has "cuda" || has "cute") {
+    CUDA_HOME = "${pkgs.cudaPackages.cudatoolkit}";
+  };
+  # // lib.optionalAttrs (has "rocm") {
+  #   ROCM_PATH = "${pkgs.rocmPackages.clr}";
+  # };
+
+  # Pip extras for helion install
+  pipExtras = lib.concatStringsSep "," (
+    lib.optional (has "cute") "cute-cu12"
+    # ++ lib.optional (has "rocm") "rocm"
+  );
+
+  selectedPackages = lib.concatMap (b: backendPackages.${b} or []) cfg.backends;
 in
 {
   options.helion = {
-    cute = lib.mkOption {
-      type = lib.types.bool;
-      default = false;
-      description = "Enable CUTLASS/CuTe kernel development";
+    backends = lib.mkOption {
+      type = lib.types.listOf (lib.types.enum [ "cuda" "cute" /* "rocm" "cpu" */ ]);
+      default = [ "cuda" ];
+      description = "Hardware backends to enable (not mutually exclusive)";
     };
   };
 
@@ -24,19 +49,11 @@ in
       clang_20
       zlib
       ninja
+    ] ++ selectedPackages;
 
-      # CUDA (always included)
-      cudaPackages.cudatoolkit
-      cudaPackages.cudnn
-    ] ++ lib.optionals cfg.cute [
-      # CuTe/CUTLASS (opt-in)
-      cudaPackages.cutlass
-    ];
-
-    environment.sessionVariables = {
-      CUDA_HOME = "${pkgs.cudaPackages.cudatoolkit}";
-      HELION_CUTE = if cfg.cute then "1" else "";
-      HELION_PIP_EXTRAS = if cfg.cute then "[cute-cu12]" else "";
+    environment.sessionVariables = backendEnv // {
+      HELION_BACKENDS = builtins.concatStringsSep "," cfg.backends;
+      HELION_PIP_EXTRAS = if pipExtras != "" then "[${pipExtras}]" else "";
     };
   };
 }
