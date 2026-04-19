@@ -1,4 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+REPO_DIR="${REPO_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
+source "$(dirname "$0")/lib.sh"
+source "$(dirname "$0")/setup.sh"
+
 echo "== hyprpunk-theme-current =="
+
+setup_test_env
 
 # ── Marker detection ──
 cat > "$HOME/.config/hypr/active-theme.conf" <<'EOF'
@@ -28,3 +36,6 @@ rm -f "$HOME/.config/hyprpunk/current/theme"
 rc=0
 fish "$REPO_DIR/dotfiles/scripts/.local/bin/hyprpunk-theme-current" 2>/dev/null || rc=$?
 assert_exit_code "exits non-zero when no theme" "1" "$rc"
+
+teardown_test_env
+test_report

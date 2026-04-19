@@ -7,55 +7,66 @@ on:
     branches: [main]
 
 jobs:
-  check:
-    name: Nix checks + script tests
+  script-tests:
+    name: Script tests
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        test:
+          - settings
+          - theme-list
+          - theme-current
+          - theme-set
+          - theme-cycle
+          - bootstrap
     steps:
       - uses: actions/checkout@v4
-
       - uses: DeterminateSystems/nix-installer-action@main
-
       - uses: DeterminateSystems/magic-nix-cache-action@main
+      - name: test-${{ matrix.test }}
+        run: nix build .#checks.x86_64-linux.${{ matrix.test }} --print-build-logs
 
-      - name: Evaluate flake + run script tests
-        run: |
-          nix build .#checks.x86_64-linux.scripts --print-build-logs
-          nix build .#checks.x86_64-linux.container-build --print-build-logs --no-link
-          nix build .#checks.x86_64-linux.helion-build --print-build-logs --no-link
+  container-builds:
+    name: Container builds
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        image: [container-build, helion-build]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+      - name: Build ${{ matrix.image }}
+        run: nix build .#checks.x86_64-linux.${{ matrix.image }} --print-build-logs --no-link
 
   vm-integration:
-    name: NixOS VM integration tests
+    name: VM integration test
     runs-on: ubuntu-latest
-    needs: check
+    needs: script-tests
     steps:
       - uses: actions/checkout@v4
-
       - uses: DeterminateSystems/nix-installer-action@main
         with:
           extra-conf: |
             system-features = kvm
-
       - uses: DeterminateSystems/magic-nix-cache-action@main
-
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-
       - name: Run VM integration test
         run: nix build .#checks.x86_64-linux.vm-integration --print-build-logs
 
   build:
-    name: Build NixOS configurations
+    name: Build desktop config
     runs-on: ubuntu-latest
-    needs: check
+    needs: script-tests
     steps:
       - uses: actions/checkout@v4
-
       - uses: DeterminateSystems/nix-installer-action@main
-
       - uses: DeterminateSystems/magic-nix-cache-action@main
-
-      - name: Build desktop config
+      - name: Build desktop system
         run: nix build .#nixosConfigurations.desktop.config.system.build.toplevel --print-build-logs --no-link

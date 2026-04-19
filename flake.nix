@@ -94,10 +94,9 @@
       };
 
       # ── Checks (run via `nix flake check`) ──
-      checks.${system} = {
-        # Script unit tests (theme engine, settings, bootstrap)
-        scripts = import ./tests { inherit pkgs; src = self; };
-
+      checks.${system} = let
+        scriptTests = import ./tests { inherit pkgs; src = self; };
+      in scriptTests // {
         # NixOS VM integration test (requires KVM)
         vm-integration = import ./tests/vm-test.nix { inherit pkgs settings; };
 

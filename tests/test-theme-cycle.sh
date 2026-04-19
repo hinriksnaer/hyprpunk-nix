@@ -1,6 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+REPO_DIR="${REPO_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
+source "$(dirname "$0")/lib.sh"
+source "$(dirname "$0")/setup.sh"
+
 echo "== hyprpunk-theme-next/prev =="
 
-# Helper: get current theme from symlink or marker
+setup_test_env
+
 get_theme() {
   if [[ -L "$HOME/.config/hyprpunk/current/theme" ]]; then
     basename "$(readlink "$HOME/.config/hyprpunk/current/theme")"
@@ -36,3 +43,6 @@ EOF
 
 output=$(fish "$REPO_DIR/dotfiles/scripts/.local/bin/hyprpunk-theme-refresh" 2>&1 || true)
 assert_contains "refresh detects alpha" "alpha" "$output"
+
+teardown_test_env
+test_report

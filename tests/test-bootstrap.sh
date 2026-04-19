@@ -1,10 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+REPO_DIR="${REPO_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
+source "$(dirname "$0")/lib.sh"
+source "$(dirname "$0")/setup.sh"
+
 echo "== bootstrap.sh =="
 
-# Test that bootstrap.sh creates the expected directory structure.
-# We simulate just the mkdir/touch section without running the full script
-# (which does network operations like fisher install, tpm clone, etc.)
+setup_test_env
 
-# Extract and run only the "Creating runtime config files" section
+# Simulate the structural setup from bootstrap.sh without running
+# the full script (which does network operations: fisher, tpm, etc.)
 mkdir -p "$HOME/.config/hyprpunk/current"
 mkdir -p "$HOME/.config/hypr/wallpapers"
 touch "$HOME/.config/hypr/active-theme.conf"
@@ -16,6 +21,9 @@ assert_file_exists "hyprpunk current dir created" "$HOME/.config/hyprpunk/curren
 assert_file_exists "wallpapers dir created" "$HOME/.config/hypr/wallpapers"
 assert_file_exists "themes dir exists" "$HYPRPUNK_PATH/themes"
 
-# Verify bootstrap.sh itself is valid bash
+# Verify bootstrap.sh parses without syntax errors
 bash -n "$REPO_DIR/bootstrap.sh" 2>/dev/null
 assert_exit_code "bootstrap.sh parses without errors" "0" "$?"
+
+teardown_test_env
+test_report
