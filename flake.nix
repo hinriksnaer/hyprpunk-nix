@@ -93,6 +93,19 @@
         };
       };
 
+      # ── Checks (run via `nix flake check`) ──
+      checks.${system} = {
+        # Script unit tests (theme engine, settings, bootstrap)
+        scripts = import ./tests { inherit pkgs; src = self; };
+
+        # NixOS VM integration test (requires KVM)
+        vm-integration = import ./tests/vm-test.nix { inherit pkgs settings; };
+
+        # Container images build end-to-end
+        container-build = self.packages.${system}.container;
+        helion-build = self.packages.${system}.helion;
+      };
+
       # ── Container images ──
       packages.${system} = let
         containerConfig = self.nixosConfigurations.container.config;
