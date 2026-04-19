@@ -66,8 +66,8 @@ push_to() {
     echo "==> Pushing $IMAGE_NAME to $host..."
     rsync --progress --chmod=u+rw "$IMAGE_PATH" "${host}:${IMAGE_NAME}.tar.gz"
     rsync --chmod=u+rwx "$(readlink -f "${BASH_SOURCE[0]}")" "${host}:hawker-container"
-    echo "==> Loading image on $host..."
-    ssh "$host" "(podman load -i ~/${IMAGE_NAME}.tar.gz 2>/dev/null || docker load -i ~/${IMAGE_NAME}.tar.gz)" 2>&1 | tail -1
+    echo "==> Loading image on $host (this may take a minute)..."
+    ssh "$host" "podman load -i ~/${IMAGE_NAME}.tar.gz 2>&1 || docker load -i ~/${IMAGE_NAME}.tar.gz 2>&1"
 }
 
 run_container() {
@@ -115,7 +115,7 @@ run_container() {
         "${mounts[@]}" \
         "${env_args[@]}" \
         "${extra_args[@]}" \
-        "localhost/$IMAGE_NAME:latest" \
+        "$IMAGE_NAME:latest" \
         bash -c "${setup_cmd}exec fish"
 }
 
@@ -129,7 +129,7 @@ case "${1:-help}" in
     run)
         echo "==> Loading $IMAGE_NAME..."
         IMAGE_PATH=$(nix build "${REPO_DIR}#${FLAKE_OUTPUT}" --no-link --print-out-paths)
-        $(detect_runtime) load -i "$IMAGE_PATH" 2>&1 | tail -1
+        $(detect_runtime) load -i "$IMAGE_PATH" 2>&1
         echo "==> Starting $IMAGE_NAME..."
         run_container
         ;;
