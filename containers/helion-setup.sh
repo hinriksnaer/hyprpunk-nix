@@ -7,9 +7,10 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/helion/config.sh"
 
-WORKSPACE="$HOME/repos/helion"
-VENV="$WORKSPACE/.venv"
-MARKER="$VENV/.helion-setup-done"
+REPOS="$HOME/repos"
+WORKSPACE="$REPOS/helion"
+VENV="$REPOS/.venv"
+MARKER="$REPOS/.helion-setup-done"
 
 if [ -f "$MARKER" ]; then
     exit 0
@@ -17,16 +18,19 @@ fi
 
 echo "==> Setting up Helion workspace..."
 
+# Shared venv for all projects (helion, pytorch, etc.)
+if [ ! -d "$VENV" ]; then
+    echo "==> Creating shared virtual environment..."
+    uv venv "$VENV"
+fi
+source "$VENV/bin/activate"
+
 if [ ! -d "$WORKSPACE" ]; then
     echo "==> Cloning $HELION_REPO ($HELION_BRANCH)..."
     git clone --branch "$HELION_BRANCH" "$HELION_REPO" "$WORKSPACE"
 fi
 
 cd "$WORKSPACE"
-
-echo "==> Creating virtual environment..."
-uv venv "$VENV"
-source "$VENV/bin/activate"
 
 echo "==> Installing PyTorch ($TORCH_INDEX)..."
 uv pip install --pre torch triton \
