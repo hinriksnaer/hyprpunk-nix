@@ -63,11 +63,13 @@ push_to() {
     # Check if remote has Nix -- if so, build remotely (pulls from cache.nixos.org)
     if ssh "$host" "nix --version" &>/dev/null; then
         echo "==> Building container on $host (remote build)..."
+        ssh "$host" "cd ~/hawker && nix build .#container --no-link --print-build-logs"
+
         local stream_script
-        stream_script=$(ssh "$host" "cd ~/hawker && nix build .#container --no-link --print-out-paths 2>&1 | tail -1")
+        stream_script=$(ssh "$host" "cd ~/hawker && nix build .#container --no-link --print-out-paths")
 
         echo "==> Loading image on $host..."
-        ssh "$host" "$stream_script | podman load 2>&1 || $stream_script | docker load 2>&1"
+        ssh "$host" "$stream_script | podman load 2>/dev/null || $stream_script | docker load"
     else
         # Fallback: build locally, stream via SSH
         echo "==> Building container locally..."
