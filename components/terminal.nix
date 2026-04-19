@@ -5,5 +5,6 @@
   imports = [
     ./terminal-headless.nix
     ../modules/desktop/kitty.nix
+    ../modules/terminal/proton-pass.nix
   ];
 }
