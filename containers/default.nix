@@ -3,6 +3,8 @@
 let
   inherit (settings) username;
 
+  projects = builtins.concatStringsSep "," (settings.projects or []);
+
   repoSrc = builtins.path {
     path = ../.;
     name = "hawker-src";
@@ -69,7 +71,9 @@ pkgs.dockerTools.buildLayeredImage {
       "NIX_SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
       "HAWKER_PATH=/home/${username}/.local/share/hawker"
       "HAWKER_USER=${username}"
+      "HAWKER_PROJECTS=${projects}"
     ];
+    User = "${username}";
     Cmd = [ "${pkgs.fish}/bin/fish" ];
     WorkingDir = "/home/${username}";
   };

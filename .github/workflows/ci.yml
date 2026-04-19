@@ -27,19 +27,15 @@ jobs:
       - name: test-${{ matrix.test }}
         run: nix build .#checks.x86_64-linux.${{ matrix.test }} --print-build-logs
 
-  container-builds:
-    name: Container builds
+  container-build:
+    name: Container build
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        image: [container-build, helion-build]
     steps:
       - uses: actions/checkout@v4
       - uses: DeterminateSystems/nix-installer-action@main
       - uses: DeterminateSystems/magic-nix-cache-action@main
-      - name: Build ${{ matrix.image }}
-        run: nix build .#checks.x86_64-linux.${{ matrix.image }} --print-build-logs --no-link
+      - name: Build container
+        run: nix build .#checks.x86_64-linux.container-build --print-build-logs --no-link
 
   vm-integration:
     name: VM integration test

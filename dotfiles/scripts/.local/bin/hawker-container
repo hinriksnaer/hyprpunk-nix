@@ -1,16 +1,12 @@
 #!/usr/bin/env bash
-# hawker-container - manage dev containers locally and on remote hosts
+# hawker-container - manage the dev container locally and on remote hosts
 #
 # Usage:
-#   hawker-container [--image NAME] <command> [args]
-#
-# Images:
-#   dev     (default)  NixOS terminal tools
-#   helion             Helion GPU compiler (CUDA + PyTorch + terminal tools)
+#   hawker-container <command> [args]
 #
 # Commands:
 #   build                    Build the container image
-#   run                      Run locally
+#   run                      Build + load + run locally
 #   push <host>              Build + push to remote host
 #   enter [host]             Enter container (local or remote)
 #   deploy <host>            Build + push + enter
@@ -19,35 +15,14 @@
 
 set -euo pipefail
 
-# Resolve symlink to find the actual repo
-REAL_SCRIPT="$(readlink -f "${BASH_SOURCE[0]}")"
-REPO_DIR="$(cd "$(dirname "$REAL_SCRIPT")/../../.." && pwd)"
+IMAGE_NAME="hawker-dev"
 
-# Default image
-IMAGE="dev"
-
-# Parse --image flag
-if [ "${1:-}" = "--image" ]; then
-    IMAGE="$2"
-    shift 2
+# Resolve symlink to find the actual repo (when run locally)
+if [ -L "${BASH_SOURCE[0]}" ] || [ -f "${BASH_SOURCE[0]}" ]; then
+    REAL_SCRIPT="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || echo "${BASH_SOURCE[0]}")"
+    REPO_DIR="$(cd "$(dirname "$REAL_SCRIPT")/../../.." 2>/dev/null && pwd 2>/dev/null || echo "")"
 fi
-
-# Set image-specific vars
-case "$IMAGE" in
-    dev)
-        IMAGE_NAME="hawker-dev"
-        FLAKE_OUTPUT="container"
-        ;;
-    helion)
-        IMAGE_NAME="hawker-helion"
-        FLAKE_OUTPUT="helion"
-        ;;
-    *)
-        echo "Unknown image: $IMAGE"
-        echo "Available: dev, helion"
-        exit 1
-        ;;
-esac
+FLAKE_OUTPUT="container"
 
 # ── Helpers ──
 
@@ -62,15 +37,32 @@ detect_runtime() {
     fi
 }
 
+detect_gpu_flags() {
+    local runtime="$1"
+    # Check if NVIDIA GPUs are available
+    if command -v nvidia-smi &>/dev/null && nvidia-smi &>/dev/null; then
+        if [ "$runtime" = "docker" ]; then
+            echo "--gpus all"
+        else
+            # Podman: use CDI if available, fall back to --device
+            if [ -d "/etc/cdi" ] || [ -d "/var/run/cdi" ]; then
+                echo "--device nvidia.com/gpu=all"
+            else
+                echo "--device /dev/nvidia0 --device /dev/nvidiactl --device /dev/nvidia-uvm --device /dev/nvidia-uvm-tools"
+            fi
+        fi
+    fi
+}
+
 build() {
     echo "==> Building $IMAGE_NAME..."
-    IMAGE_PATH=$(nix build "$REPO_DIR#$FLAKE_OUTPUT" --no-link --print-out-paths)
+    IMAGE_PATH=$(nix build "${REPO_DIR}#${FLAKE_OUTPUT}" --no-link --print-out-paths)
     echo "    $IMAGE_PATH"
 }
 
 push_to() {
     local host="$1"
-    IMAGE_PATH=$(nix build "$REPO_DIR#$FLAKE_OUTPUT" --no-link --print-out-paths)
+    IMAGE_PATH=$(nix build "${REPO_DIR}#${FLAKE_OUTPUT}" --no-link --print-out-paths)
     echo "==> Pushing $IMAGE_NAME to $host..."
     scp "$IMAGE_PATH" "${host}:${IMAGE_NAME}.tar.gz"
     scp "$(readlink -f "${BASH_SOURCE[0]}")" "${host}:hawker-container"
@@ -79,7 +71,8 @@ push_to() {
 }
 
 run_container() {
-    local runtime=$(detect_runtime)
+    local runtime
+    runtime=$(detect_runtime)
 
     $runtime rm -f "$IMAGE_NAME" 2>/dev/null || true
 
@@ -87,18 +80,33 @@ run_container() {
     local env_args=(-e "TERM=xterm-256color")
     local extra_args=()
 
+    # GPU passthrough
+    local gpu_flags
+    gpu_flags=$(detect_gpu_flags "$runtime")
+    if [ -n "$gpu_flags" ]; then
+        # shellcheck disable=SC2206
+        extra_args+=($gpu_flags)
+    fi
+
     # Forward SSH agent socket
     if [ -n "${SSH_AUTH_SOCK:-}" ] && [ -S "$SSH_AUTH_SOCK" ]; then
         mounts+=(-v "$SSH_AUTH_SOCK:/tmp/ssh-agent.sock")
         env_args+=(-e "SSH_AUTH_SOCK=/tmp/ssh-agent.sock")
     fi
 
+    # Persistent work volume
     mounts+=(-v "${IMAGE_NAME}-work:/home/${HAWKER_USER:-$USER}/work")
 
-    # Run setup script on first entry for project containers
+    # Run project setup scripts on entry (idempotent -- each checks its own marker)
     local setup_cmd=""
-    if [ "$IMAGE" = "helion" ]; then
-        setup_cmd="bash ~/hawker/containers/helion-setup.sh && "
+    local projects="${HAWKER_PROJECTS:-}"
+    if [ -n "$projects" ]; then
+        for project in ${projects//,/ }; do
+            local script="$HOME/hawker/containers/${project}-setup.sh"
+            if [ -f "$script" ] 2>/dev/null; then
+                setup_cmd+="bash ~/hawker/containers/${project}-setup.sh && "
+            fi
+        done
     fi
 
     exec $runtime run -it --rm \
@@ -106,6 +114,7 @@ run_container() {
         --hostname "$IMAGE_NAME" \
         "${mounts[@]}" \
         "${env_args[@]}" \
+        "${extra_args[@]}" \
         "$IMAGE_NAME" \
         bash -c "${setup_cmd}exec fish"
 }
@@ -119,33 +128,33 @@ case "${1:-help}" in
 
     run)
         echo "==> Loading $IMAGE_NAME..."
-        IMAGE_PATH=$(nix build "$REPO_DIR#$FLAKE_OUTPUT" --no-link --print-out-paths)
+        IMAGE_PATH=$(nix build "${REPO_DIR}#${FLAKE_OUTPUT}" --no-link --print-out-paths)
         $(detect_runtime) load -i "$IMAGE_PATH" 2>&1 | tail -1
         echo "==> Starting $IMAGE_NAME..."
         run_container
         ;;
 
     push|update)
-        [ $# -lt 2 ] && echo "Usage: $0 [--image NAME] push <host>" && exit 1
+        [ $# -lt 2 ] && echo "Usage: $0 push <host>" && exit 1
         build
         push_to "$2"
-        echo "==> Done. Enter with: $0 --image $IMAGE enter $2"
+        echo "==> Done. Enter with: $0 enter $2"
         ;;
 
     enter)
         if [ $# -ge 2 ]; then
-            ssh -tt "$2" "~/hawker-container --image $IMAGE run-local"
+            ssh -A -tt "$2" "~/hawker-container run-local"
         else
             run_container
         fi
         ;;
 
     deploy)
-        [ $# -lt 2 ] && echo "Usage: $0 [--image NAME] deploy <host>" && exit 1
+        [ $# -lt 2 ] && echo "Usage: $0 deploy <host>" && exit 1
         build
         push_to "$2"
         echo "==> Entering container..."
-        ssh -tt "$2" "~/hawker-container --image $IMAGE run-local"
+        ssh -A -tt "$2" "~/hawker-container run-local"
         ;;
 
     run-local)
@@ -171,20 +180,20 @@ case "${1:-help}" in
     help|*)
         echo "hawker-container - manage dev containers"
         echo ""
-        echo "Images: dev (default), helion"
-        echo ""
         echo "Usage:"
-        echo "  $0 [--image NAME] build              Build container image"
-        echo "  $0 [--image NAME] run                Run locally"
-        echo "  $0 [--image NAME] push <host>         Build + push to remote"
-        echo "  $0 [--image NAME] enter [host]        Enter container"
-        echo "  $0 [--image NAME] deploy <host>       Build + push + enter"
-        echo "  $0 [--image NAME] status [host]       Check status"
-        echo "  $0 [--image NAME] stop [host]         Stop container"
+        echo "  $0 build              Build container image"
+        echo "  $0 run                Build + run locally"
+        echo "  $0 push <host>        Build + push to remote"
+        echo "  $0 enter [host]       Enter container (local or remote)"
+        echo "  $0 deploy <host>      Build + push + enter"
+        echo "  $0 status [host]      Check status"
+        echo "  $0 stop [host]        Stop container"
+        echo ""
+        echo "Projects enabled (from settings.nix): \$HAWKER_PROJECTS"
         echo ""
         echo "Examples:"
-        echo "  $0 build                              Build dev container"
-        echo "  $0 --image helion deploy ibm-kaiba    Deploy Helion to ibm-kaiba"
-        echo "  $0 --image helion enter ibm-kaiba     Enter Helion on ibm-kaiba"
+        echo "  $0 run                              Run locally"
+        echo "  $0 deploy ibm-kaiba                 Deploy to ibm-kaiba"
+        echo "  $0 enter ibm-kaiba                  Enter on ibm-kaiba"
         ;;
 esac

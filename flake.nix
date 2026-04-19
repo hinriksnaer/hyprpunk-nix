@@ -59,6 +59,9 @@
         networking  = import ./modules/networking.nix;
         fancontrol  = import ./modules/fancontrol.nix;
 
+        # Projects
+        helion      = import ./modules/projects/helion.nix;
+
         # Components (composable module collections)
         terminal    = import ./components/terminal.nix;
         ui          = import ./components/ui.nix;
@@ -83,14 +86,6 @@
             ./hosts/container/default.nix
           ];
         };
-
-        helion = nixpkgs.lib.nixosSystem {
-          inherit system;
-          specialArgs = { inherit settings; };
-          modules = [
-            ./hosts/helion/default.nix
-          ];
-        };
       };
 
       # ── Checks (run via `nix flake check`) ──
@@ -100,27 +95,18 @@
         # NixOS VM integration test (requires KVM)
         vm-integration = import ./tests/vm-test.nix { inherit pkgs settings; };
 
-        # Container images build end-to-end
+        # Container image builds end-to-end
         container-build = self.packages.${system}.container;
-        helion-build = self.packages.${system}.helion;
       };
 
-      # ── Container images ──
+      # ── Container image ──
       packages.${system} = let
         containerConfig = self.nixosConfigurations.container.config;
         containerPackages = containerConfig.environment.systemPackages;
-        helionConfig = self.nixosConfigurations.helion.config;
-        helionPackages = helionConfig.environment.systemPackages;
       in {
         container = import ./containers/default.nix {
           inherit pkgs settings;
           packages = containerPackages;
-        };
-
-        helion = import ./containers/default.nix {
-          inherit pkgs settings;
-          packages = helionPackages;
-          name = "hawker-helion";
         };
       };
     };
