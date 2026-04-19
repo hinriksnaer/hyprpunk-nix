@@ -2,13 +2,15 @@
 
 let
   pytorchSettings = settings.pytorch or {};
+  nccl = pkgs.cudaPackages.nccl;
 in
 {
   imports = [ ../../modules/ai/cuda-dev.nix ];
 
   config = {
     environment.systemPackages = with pkgs; [
-      cudaPackages.nccl
+      nccl
+      nccl.dev  # headers (nccl.h) -- Nix splits into separate output
       gfortran
       openblas
       libuv
@@ -17,7 +19,7 @@ in
 
       # Build acceleration (upstream recommended)
       ccache
-      mold  # fast linker
+      mold
 
       python3Packages.pyyaml
       python3Packages.typing-extensions
@@ -27,17 +29,17 @@ in
     environment.sessionVariables = {
       PYTORCH_REPO = pytorchSettings.repo or "https://github.com/pytorch/pytorch.git";
       PYTORCH_BRANCH = pytorchSettings.branch or "main";
-      NCCL_ROOT = "${pkgs.cudaPackages.nccl}";
+      NCCL_ROOT = "${nccl}";
+      NCCL_INCLUDE_DIR = "${nccl.dev}/include";
+      NCCL_LIB_DIR = "${nccl}/lib";
       USE_CUDA = "1";
       USE_CUDNN = "1";
       USE_NCCL = "1";
       USE_SYSTEM_NCCL = "1";
       MAX_JOBS = "16";
-      # ccache for fast incremental rebuilds (upstream best practice)
       CMAKE_C_COMPILER_LAUNCHER = "ccache";
       CMAKE_CXX_COMPILER_LAUNCHER = "ccache";
       CMAKE_CUDA_COMPILER_LAUNCHER = "ccache";
-      # mold for fast linking
       CMAKE_LINKER_TYPE = "MOLD";
     };
   };
