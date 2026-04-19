@@ -13,5 +13,6 @@
     ../modules/terminal/neovim.nix
     ../modules/terminal/gh.nix
     ../modules/terminal/opencode.nix
+    ../modules/terminal/proton-pass.nix
   ];
 }

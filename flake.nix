@@ -32,6 +32,7 @@
         yazi        = import ./modules/terminal/yazi.nix;
         gh          = import ./modules/terminal/gh.nix;
         opencode    = import ./modules/terminal/opencode.nix;
+        proton-pass = import ./modules/terminal/proton-pass.nix;
 
         # Desktop
         hyprland    = import ./modules/desktop/hyprland.nix;
